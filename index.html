@@ -1,285 +1,166 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Tactical Deployment</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<title>Morse Duel</title>
 
 <style>
 body {
   margin: 0;
-  background: #0f1115;
-  color: #e5e7eb;
-  font-family: system-ui;
+  background: #0e0e0e;
+  color: #e5e5e5;
+  font-family: monospace;
   display: flex;
   justify-content: center;
   align-items: center;
   height: 100vh;
 }
-
-#game {
-  display: grid;
-  grid-template-columns: auto 220px;
-  gap: 20px;
+#app { width: 700px; }
+h1 { text-align: center; letter-spacing: 4px; }
+#status { text-align: center; opacity: .6; margin: 10px; }
+#score { text-align: center; margin-bottom: 10px; }
+#game { border-top: 1px solid #333; padding-top: 20px; }
+input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #555;
+  color: #fff;
+  font-size: 20px;
+  outline: none;
 }
-
-#board {
-  display: grid;
-  grid-template-columns: repeat(5, 70px);
-  grid-template-rows: repeat(5, 70px);
-  border: 2px solid #2a2f3a;
-}
-
-.tile {
-  border: 1px solid #1f2430;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 14px;
-  cursor: pointer;
-}
-
-.tile.dark { background: #141824; }
-.tile.light { background: #181d2a; }
-
-.tile.highlight { outline: 2px solid #4ade80; }
-.tile.enemy { outline: 2px solid #ef4444; }
-
-.unit {
-  font-weight: bold;
-}
-
-.player { color: #4ade80; }
-.enemyUnit { color: #ef4444; }
-
-#side {
-  display: flex;
-  flex-direction: column;
-}
-
-#hand {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.card {
-  background: #1e2330;
-  padding: 8px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.card:hover {
-  outline: 2px solid #4ade80;
-}
-
-#log {
-  margin-top: 10px;
-  font-size: 13px;
-  opacity: .8;
-}
+.morse { font-size: 32px; text-align: center; margin: 20px; }
+.timer { text-align: center; font-size: 18px; }
+.correct { color: #4caf50; }
+.wrong { color: #f44336; }
 </style>
 </head>
 
 <body>
-<div id="game">
-  <div id="board"></div>
+<div id="app">
+  <h1>M O R S E &nbsp; D U E L</h1>
+  <div id="status">Connecting...</div>
+  <div id="score">You 0 — 0 Opponent</div>
 
-  <div id="side">
-    <h3>Hand</h3>
-    <div id="hand"></div>
-    <div id="log"></div>
-  </div>
+  <div id="game"></div>
 </div>
 
 <script>
-/* ===== CONFIG ===== */
-const SIZE = 5;
+const ws = new WebSocket("ws://localhost:8080");
 
-const UNITS = {
-  Scout: { move: "knight", cost: 1 },
-  Guard: { move: "rook1", cost: 2 },
-  Sniper: { move: "bishop", cost: 3 },
-  Leader: { move: "king", cost: 999 }
+let playerIndex = 0;
+let isSender = false;
+let timer;
+let answer = "";
+
+const gameDiv = document.getElementById("game");
+const statusDiv = document.getElementById("status");
+const scoreDiv = document.getElementById("score");
+
+ws.onopen = () => ws.send(JSON.stringify({ type: "join" }));
+
+ws.onmessage = e => {
+  const data = JSON.parse(e.data);
+
+  if (data.type === "waiting") {
+    statusDiv.textContent = "Waiting for online player...";
+  }
+
+  if (data.type === "start") {
+    playerIndex = data.you;
+    updateScores(data.scores);
+    setRole(data.sender);
+  }
+
+  if (data.type === "playMorse") {
+    playMorse(data.morse);
+    showDecode();
+  }
+
+  if (data.type === "roundEnd") {
+    updateScores(data.scores);
+    setRole(data.sender);
+  }
+
+  if (data.type === "gameOver") {
+    statusDiv.textContent = "GAME OVER";
+  }
+
+  if (data.type === "opponentLeft") {
+    statusDiv.textContent = "Opponent disconnected — Victory";
+  }
 };
 
-/* ===== STATE ===== */
-let board = Array(SIZE * SIZE).fill(null);
-let hand = ["Scout", "Guard", "Sniper"];
-let selectedCard = null;
-let selectedUnit = null;
+function setRole(sender) {
+  isSender = sender === playerIndex;
+  gameDiv.innerHTML = "";
+  statusDiv.textContent = isSender ? "Your turn to send" : "Your turn to decode";
 
-/* ===== INIT ===== */
-const boardEl = document.getElementById("board");
-const handEl = document.getElementById("hand");
-const logEl = document.getElementById("log");
-
-initBoard();
-drawHand();
-placeEnemyLeader();
-
-function initBoard() {
-  boardEl.innerHTML = "";
-  for (let i = 0; i < SIZE * SIZE; i++) {
-    const tile = document.createElement("div");
-    tile.className = "tile " + ((Math.floor(i / SIZE) + i) % 2 ? "dark" : "light");
-    tile.onclick = () => onTileClick(i);
-    boardEl.appendChild(tile);
-  }
+  isSender ? showSend() : null;
 }
 
-function drawHand() {
-  handEl.innerHTML = "";
-  hand.forEach((u, i) => {
-    const c = document.createElement("div");
-    c.className = "card";
-    c.textContent = u;
-    c.onclick = () => selectCard(i);
-    handEl.appendChild(c);
-  });
-}
+function showSend() {
+  const input = document.createElement("input");
+  input.placeholder = "Enter MORSE using SPACE";
+  let spaces = "";
 
-/* ===== HAND ===== */
-function selectCard(i) {
-  selectedCard = hand[i];
-  selectedUnit = null;
-  log(`Selected card: ${selectedCard}`);
-}
-
-/* ===== BOARD ===== */
-function onTileClick(i) {
-  const tile = board[i];
-
-  if (selectedCard && !tile) {
-    if (Math.floor(i / SIZE) >= SIZE - 2) {
-      board[i] = { type: selectedCard, owner: "player" };
-      hand.splice(hand.indexOf(selectedCard), 1);
-      selectedCard = null;
-      drawHand();
-      render();
-      enemyTurn();
+  input.onkeydown = e => {
+    if (e.code === "Space") {
+      spaces += " ";
+      e.preventDefault();
     }
-    return;
-  }
-
-  if (tile && tile.owner === "player") {
-    selectedUnit = i;
-    highlightMoves(i);
-  } else if (selectedUnit !== null) {
-    attemptMove(selectedUnit, i);
-  }
-}
-
-function attemptMove(from, to) {
-  const unit = board[from];
-  const moves = getMoves(from, unit);
-
-  if (!moves.includes(to)) return;
-
-  if (board[to]?.type === "Leader") {
-    alert("YOU WIN");
-    location.reload();
-  }
-
-  board[to] = unit;
-  board[from] = null;
-  selectedUnit = null;
-  render();
-  enemyTurn();
-}
-
-/* ===== MOVES ===== */
-function getMoves(i, unit) {
-  const x = i % SIZE;
-  const y = Math.floor(i / SIZE);
-  const moves = [];
-
-  const add = (nx, ny) => {
-    if (nx >= 0 && ny >= 0 && nx < SIZE && ny < SIZE) {
-      const idx = ny * SIZE + nx;
-      if (!board[idx] || board[idx].owner !== unit.owner)
-        moves.push(idx);
+    if (e.code === "Enter") {
+      const morse = spaces.trim();
+      ws.send(JSON.stringify({
+        type: "morse",
+        morse,
+        text: "HELLO" // demo fixed answer
+      }));
+      spaces = "";
+      input.value = "";
     }
   };
 
-  if (unit.move === "king") {
-    for (let dx=-1;dx<=1;dx++)
-      for (let dy=-1;dy<=1;dy++)
-        if (dx||dy) add(x+dx,y+dy);
-  }
-
-  if (unit.move === "rook1") {
-    [[1,0],[-1,0],[0,1],[0,-1]].forEach(d=>add(x+d[0],y+d[1]));
-  }
-
-  if (unit.move === "bishop") {
-    [[1,1],[-1,1],[1,-1],[-1,-1]].forEach(d=>{
-      for (let s=1;s<SIZE;s++) add(x+d[0]*s,y+d[1]*s);
-    });
-  }
-
-  if (unit.move === "knight") {
-    [[1,2],[2,1],[-1,2],[-2,1],[1,-2],[2,-1],[-1,-2],[-2,-1]]
-      .forEach(d=>add(x+d[0],y+d[1]));
-  }
-
-  return moves;
+  gameDiv.appendChild(input);
 }
 
-/* ===== ENEMY ===== */
-function placeEnemyLeader() {
-  board[2] = { type: "Leader", owner: "enemy", move: "king" };
+function showDecode() {
+  gameDiv.innerHTML = `
+    <div class="morse">• — • •</div>
+    <div class="timer" id="timer"></div>
+    <input id="guess" placeholder="Type decoded text" />
+  `;
+
+  let time = 15;
+  document.getElementById("timer").textContent = time;
+
+  timer = setInterval(() => {
+    time--;
+    document.getElementById("timer").textContent = time;
+    if (time <= 0) submitGuess("");
+  }, 1000);
+
+  document.getElementById("guess").onkeydown = e => {
+    if (e.key === "Enter") submitGuess(e.target.value.toUpperCase());
+  };
 }
 
-function enemyTurn() {
-  setTimeout(() => {
-    for (let i = 0; i < board.length; i++) {
-      const u = board[i];
-      if (u && u.owner === "enemy") {
-        const moves = getMoves(i, u);
-        if (moves.length) {
-          const to = moves[Math.floor(Math.random() * moves.length)];
-          if (board[to]?.type === "Leader") {
-            alert("YOU LOSE");
-            location.reload();
-          }
-          board[to] = u;
-          board[i] = null;
-          break;
-        }
-      }
-    }
-    render();
-  }, 400);
+function submitGuess(text) {
+  clearInterval(timer);
+  ws.send(JSON.stringify({
+    type: "guess",
+    text,
+    player: playerIndex
+  }));
 }
 
-/* ===== RENDER ===== */
-function highlightMoves(i) {
-  render();
-  getMoves(i, board[i]).forEach(m => {
-    boardEl.children[m].classList.add("highlight");
-  });
+function updateScores(scores) {
+  scoreDiv.textContent = `You ${scores[playerIndex]} — ${scores[1-playerIndex]} Opponent`;
 }
 
-function render() {
-  [...boardEl.children].forEach((t, i) => {
-    t.classList.remove("highlight","enemy");
-    t.innerHTML = "";
-    if (board[i]) {
-      const u = document.createElement("div");
-      u.className = `unit ${board[i].owner === "player" ? "player" : "enemyUnit"}`;
-      u.textContent = board[i].type[0];
-      t.appendChild(u);
-    }
-  });
+function playMorse(morse) {
+  // audio placeholder
 }
-
-function log(msg) {
-  logEl.textContent = msg;
-}
-
-render();
 </script>
 </body>
 </html>
