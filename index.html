@@ -1,165 +1,111 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8" />
 <title>Morse Duel</title>
-
 <style>
 body {
-  margin: 0;
-  background: #0e0e0e;
-  color: #e5e5e5;
-  font-family: monospace;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
+  background:#0e0e0e;
+  color:#e5e5e5;
+  font-family:monospace;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
 }
-#app { width: 700px; }
-h1 { text-align: center; letter-spacing: 4px; }
-#status { text-align: center; opacity: .6; margin: 10px; }
-#score { text-align: center; margin-bottom: 10px; }
-#game { border-top: 1px solid #333; padding-top: 20px; }
+#app { width:600px; }
+h1 { text-align:center; letter-spacing:4px; }
+#status { text-align:center; opacity:.6; margin:10px; }
+#score { text-align:center; margin-bottom:10px; }
 input {
-  width: 100%;
-  background: transparent;
-  border: none;
-  border-bottom: 1px solid #555;
-  color: #fff;
-  font-size: 20px;
-  outline: none;
+  width:100%;
+  background:transparent;
+  border:none;
+  border-bottom:1px solid #555;
+  color:white;
+  font-size:20px;
+  outline:none;
 }
-.morse { font-size: 32px; text-align: center; margin: 20px; }
-.timer { text-align: center; font-size: 18px; }
-.correct { color: #4caf50; }
-.wrong { color: #f44336; }
 </style>
 </head>
-
 <body>
 <div id="app">
-  <h1>M O R S E &nbsp; D U E L</h1>
-  <div id="status">Connecting...</div>
-  <div id="score">You 0 — 0 Opponent</div>
-
-  <div id="game"></div>
+<h1>M O R S E &nbsp; D U E L</h1>
+<div id="status">Connecting...</div>
+<div id="score">You 0 — 0 Opponent</div>
+<div id="game"></div>
 </div>
 
 <script>
-const ws = new WebSocket("ws://localhost:8080");
+const ws = new WebSocket("WSS_URL_HERE"); // ← SẼ ĐỔI SAU
 
-let playerIndex = 0;
-let isSender = false;
-let timer;
-let answer = "";
+let me = 0;
+let sender = false;
 
-const gameDiv = document.getElementById("game");
-const statusDiv = document.getElementById("status");
-const scoreDiv = document.getElementById("score");
+const status = document.getElementById("status");
+const score = document.getElementById("score");
+const game = document.getElementById("game");
 
-ws.onopen = () => ws.send(JSON.stringify({ type: "join" }));
+ws.onopen = () => ws.send(JSON.stringify({ type:"join" }));
 
 ws.onmessage = e => {
-  const data = JSON.parse(e.data);
+  const d = JSON.parse(e.data);
 
-  if (data.type === "waiting") {
-    statusDiv.textContent = "Waiting for online player...";
+  if (d.type === "waiting") status.textContent = "Waiting for player...";
+  if (d.type === "start") {
+    me = d.you;
+    updateScore(d.scores);
+    setRole(d.sender);
   }
-
-  if (data.type === "start") {
-    playerIndex = data.you;
-    updateScores(data.scores);
-    setRole(data.sender);
+  if (d.type === "playMorse") showDecode();
+  if (d.type === "roundEnd") {
+    updateScore(d.scores);
+    setRole(d.sender);
   }
-
-  if (data.type === "playMorse") {
-    playMorse(data.morse);
-    showDecode();
-  }
-
-  if (data.type === "roundEnd") {
-    updateScores(data.scores);
-    setRole(data.sender);
-  }
-
-  if (data.type === "gameOver") {
-    statusDiv.textContent = "GAME OVER";
-  }
-
-  if (data.type === "opponentLeft") {
-    statusDiv.textContent = "Opponent disconnected — Victory";
-  }
+  if (d.type === "gameOver") status.textContent = "GAME OVER";
 };
 
-function setRole(sender) {
-  isSender = sender === playerIndex;
-  gameDiv.innerHTML = "";
-  statusDiv.textContent = isSender ? "Your turn to send" : "Your turn to decode";
-
-  isSender ? showSend() : null;
+function setRole(s) {
+  sender = s === me;
+  game.innerHTML = "";
+  status.textContent = sender ? "Send Morse" : "Decode Morse";
+  if (sender) showSend();
 }
 
 function showSend() {
-  const input = document.createElement("input");
-  input.placeholder = "Enter MORSE using SPACE";
-  let spaces = "";
-
-  input.onkeydown = e => {
-    if (e.code === "Space") {
-      spaces += " ";
-      e.preventDefault();
-    }
-    if (e.code === "Enter") {
-      const morse = spaces.trim();
+  const i = document.createElement("input");
+  i.placeholder = "Press SPACE, Enter to send";
+  let morse = "";
+  i.onkeydown = e => {
+    if (e.code === "Space") { morse += " "; e.preventDefault(); }
+    if (e.key === "Enter") {
       ws.send(JSON.stringify({
-        type: "morse",
+        type:"morse",
         morse,
-        text: "HELLO" // demo fixed answer
+        text:"HELLO"
       }));
-      spaces = "";
-      input.value = "";
+      morse = "";
+      i.value = "";
     }
   };
-
-  gameDiv.appendChild(input);
+  game.appendChild(i);
 }
 
 function showDecode() {
-  gameDiv.innerHTML = `
-    <div class="morse">• — • •</div>
-    <div class="timer" id="timer"></div>
-    <input id="guess" placeholder="Type decoded text" />
-  `;
-
-  let time = 15;
-  document.getElementById("timer").textContent = time;
-
-  timer = setInterval(() => {
-    time--;
-    document.getElementById("timer").textContent = time;
-    if (time <= 0) submitGuess("");
-  }, 1000);
-
-  document.getElementById("guess").onkeydown = e => {
-    if (e.key === "Enter") submitGuess(e.target.value.toUpperCase());
+  game.innerHTML = `<input id="g" placeholder="Type decoded text"/>`;
+  document.getElementById("g").onkeydown = e => {
+    if (e.key === "Enter") {
+      ws.send(JSON.stringify({
+        type:"guess",
+        text:e.target.value.toUpperCase(),
+        player:me
+      }));
+    }
   };
 }
 
-function submitGuess(text) {
-  clearInterval(timer);
-  ws.send(JSON.stringify({
-    type: "guess",
-    text,
-    player: playerIndex
-  }));
-}
-
-function updateScores(scores) {
-  scoreDiv.textContent = `You ${scores[playerIndex]} — ${scores[1-playerIndex]} Opponent`;
-}
-
-function playMorse(morse) {
-  // audio placeholder
+function updateScore(s) {
+  score.textContent = `You ${s[me]} — ${s[1-me]} Opponent`;
 }
 </script>
 </body>
