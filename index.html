@@ -1,235 +1,172 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Morse Code Rush 📡</title>
-  <style>
-    body {
-      font-family: system-ui, sans-serif;
-      background: radial-gradient(circle at top, #0f2027, #000);
-      color: #fff;
-      text-align: center;
-      padding: 30px;
-    }
+<meta charset="UTF-8">
+<title>Mini English Practice</title>
 
-    h1 {
-      margin-bottom: 10px;
-    }
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #f2f4f7;
+  margin: 0;
+}
 
-    .panel {
-      max-width: 420px;
-      margin: auto;
-      background: rgba(255, 255, 255, 0.08);
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 0 20px rgba(0, 255, 255, 0.15);
-    }
+header {
+  background: #1976d2;
+  color: white;
+  padding: 16px;
+  text-align: center;
+}
 
-    .stats {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 15px;
-      font-size: 14px;
-    }
+nav button {
+  margin: 6px;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  color: #1976d2;
+}
 
-    .morse {
-      font-size: 32px;
-      letter-spacing: 6px;
-      margin: 20px 0;
-      height: 40px;
-    }
+main {
+  max-width: 800px;
+  margin: 20px auto;
+  background: white;
+  padding: 20px;
+  border-radius: 6px;
+}
 
-    input {
-      width: 80px;
-      font-size: 26px;
-      text-align: center;
-      padding: 5px;
-      border-radius: 6px;
-      border: none;
-      outline: none;
-    }
+.question {
+  margin-top: 16px;
+}
 
-    button {
-      margin-top: 15px;
-      padding: 10px 18px;
-      font-size: 16px;
-      border-radius: 8px;
-      border: none;
-      cursor: pointer;
-      background: #00eaff;
-      color: #000;
-      font-weight: bold;
-    }
+.question label {
+  display: block;
+  margin: 4px 0;
+}
 
-    .feedback {
-      margin-top: 12px;
-      height: 20px;
-      font-size: 14px;
-    }
+.submit {
+  margin-top: 20px;
+  padding: 10px;
+  width: 100%;
+  background: #1976d2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
 
-    .time-bar {
-      height: 6px;
-      background: #222;
-      border-radius: 4px;
-      overflow: hidden;
-      margin-top: 10px;
-    }
-
-    .time-fill {
-      height: 100%;
-      width: 100%;
-      background: #00eaff;
-      transition: width 0.1s linear;
-    }
-  </style>
+audio {
+  width: 100%;
+  margin: 10px 0;
+}
+</style>
 </head>
+
 <body>
 
-<h1>Morse Code Rush 📡</h1>
+<header>
+  <h1>📘 Mini English Practice</h1>
+  <nav>
+    <button onclick="showReading()">Reading</button>
+    <button onclick="showListening()">Listening</button>
+  </nav>
+</header>
 
-<div class="panel">
-  <div class="stats">
-    <div>Score: <span id="score">0</span></div>
-    <div>Combo: x<span id="combo">1</span></div>
-  </div>
-
-  <div class="morse" id="morseDisplay">---</div>
-
-  <input id="answer" maxlength="1" disabled />
-
-  <div class="time-bar">
-    <div class="time-fill" id="timeFill"></div>
-  </div>
-
-  <button id="startBtn">START</button>
-
-  <div class="feedback" id="feedback"></div>
-</div>
+<main id="app"></main>
 
 <script>
-  const MORSE = {
-    A: ".-",    B: "-...",  C: "-.-.",  D: "-..",
-    E: ".",     F: "..-.",  G: "--.",   H: "....",
-    I: "..",    J: ".---",  K: "-.-",   L: ".-..",
-    M: "--",    N: "-.",    O: "---",   P: ".--.",
-    Q: "--.-",  R: ".-.",   S: "...",   T: "-",
-    U: "..-",   V: "...-",  W: ".--",   X: "-..-",
-    Y: "-.--",  Z: "--.."
-  };
+// ================= DATA =================
 
-  const letters = Object.keys(MORSE);
-
-  let currentLetter = "";
-  let score = 0;
-  let combo = 1;
-  let timeLeft = 0;
-  let timer = null;
-
-  const scoreEl = document.getElementById("score");
-  const comboEl = document.getElementById("combo");
-  const morseEl = document.getElementById("morseDisplay");
-  const inputEl = document.getElementById("answer");
-  const feedbackEl = document.getElementById("feedback");
-  const timeFill = document.getElementById("timeFill");
-  const startBtn = document.getElementById("startBtn");
-
-  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
-  function beep(duration) {
-    const osc = audioCtx.createOscillator();
-    osc.frequency.value = 700;
-    osc.connect(audioCtx.destination);
-    osc.start();
-    osc.stop(audioCtx.currentTime + duration);
-  }
-
-  async function playMorse(code) {
-    morseEl.textContent = "";
-    for (const char of code) {
-      if (char === ".") {
-        morseEl.textContent += "•";
-        beep(0.1);
-        await delay(200);
-      } else {
-        morseEl.textContent += "–";
-        beep(0.3);
-        await delay(400);
-      }
-      await delay(200);
+const readingLesson = {
+  title: "The Benefits of Exercise",
+  content: `
+    Exercise is very important for our health.
+    It helps us stay strong, reduce stress,
+    and improve our mood.
+  `,
+  questions: [
+    {
+      q: "What is the passage mainly about?",
+      options: ["Food", "Exercise", "Sleep"],
+      answer: 1
     }
-  }
+  ]
+};
 
-  function delay(ms) {
-    return new Promise(res => setTimeout(res, ms));
-  }
+const listeningLesson = {
+  title: "A Daily Routine",
+  audio: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+  transcript: "The speaker is talking about their daily routine.",
+  questions: [
+    {
+      q: "What is the audio about?",
+      options: ["Travel", "Daily routine", "Music"],
+      answer: 1
+    }
+  ]
+};
 
-  function nextRound() {
-    inputEl.value = "";
-    feedbackEl.textContent = "";
-    currentLetter = letters[Math.floor(Math.random() * letters.length)];
-    const code = MORSE[currentLetter];
+// ================= RENDER =================
 
-    timeLeft = Math.max(1500 - score * 20, 600);
-    startTimer();
+function showReading() {
+  document.getElementById("app").innerHTML = `
+    <h2>${readingLesson.title}</h2>
+    <p>${readingLesson.content}</p>
 
-    playMorse(code);
-  }
+    ${renderQuestions(readingLesson.questions)}
+    <button class="submit" onclick="checkAnswers(${JSON.stringify(readingLesson.questions)})">
+      Submit
+    </button>
 
-  function startTimer() {
-    clearInterval(timer);
-    let start = Date.now();
+    <div id="result"></div>
+  `;
+}
 
-    timer = setInterval(() => {
-      const elapsed = Date.now() - start;
-      const remaining = Math.max(timeLeft - elapsed, 0);
-      timeFill.style.width = (remaining / timeLeft) * 100 + "%";
+function showListening() {
+  document.getElementById("app").innerHTML = `
+    <h2>${listeningLesson.title}</h2>
+    <audio controls src="${listeningLesson.audio}"></audio>
+    <p><strong>Transcript:</strong> ${listeningLesson.transcript}</p>
 
-      if (remaining <= 0) {
-        clearInterval(timer);
-        fail();
-      }
-    }, 50);
-  }
+    ${renderQuestions(listeningLesson.questions)}
+    <button class="submit" onclick="checkAnswers(${JSON.stringify(listeningLesson.questions)})">
+      Submit
+    </button>
 
-  function success() {
-    clearInterval(timer);
-    score += 10 * combo;
-    combo++;
-    updateStats();
-    nextRound();
-  }
+    <div id="result"></div>
+  `;
+}
 
-  function fail() {
-    feedbackEl.textContent =
-      `❌ ${currentLetter} = ${MORSE[currentLetter]}`;
-    combo = 1;
-    updateStats();
-    setTimeout(nextRound, 1200);
-  }
+function renderQuestions(questions) {
+  return questions.map((q, i) => `
+    <div class="question">
+      <p>${q.q}</p>
+      ${q.options.map((o, j) => `
+        <label>
+          <input type="radio" name="q${i}" value="${j}">
+          ${o}
+        </label>
+      `).join("")}
+    </div>
+  `).join("");
+}
 
-  function updateStats() {
-    scoreEl.textContent = score;
-    comboEl.textContent = combo;
-  }
-
-  inputEl.addEventListener("input", () => {
-    const guess = inputEl.value.toUpperCase();
-    if (!guess) return;
-
-    if (guess === currentLetter) {
-      feedbackEl.textContent = "✔️ Correct!";
-      success();
-    } else {
-      fail();
+function checkAnswers(questions) {
+  let score = 0;
+  questions.forEach((q, i) => {
+    const selected = document.querySelector(`input[name="q${i}"]:checked`);
+    if (selected && Number(selected.value) === q.answer) {
+      score++;
     }
   });
 
-  startBtn.onclick = () => {
-    startBtn.disabled = true;
-    inputEl.disabled = false;
-    inputEl.focus();
-    nextRound();
-  };
+  document.getElementById("result").innerHTML =
+    `<h3>Score: ${score} / ${questions.length}</h3>`;
+}
+
+// default
+showReading();
 </script>
 
 </body>
