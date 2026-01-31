@@ -66,6 +66,7 @@ wss.on("connection", ws => {
         p.send(JSON.stringify({
           type: "playMorse",
           morse: data.morse
+          length: data.text.length
         }))
       );
     }
