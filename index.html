@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Typing Battle</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: monospace;
+    }
+
+    body {
+      margin: 0;
+      background: #0e0e0e;
+      color: #e2b714;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .container {
+      width: 900px;
+    }
+
+    .logo {
+      text-align: center;
+      font-size: 32px;
+      margin-bottom: 30px;
+    }
+
+    .logo span {
+      color: #646669;
+    }
+
+    #text-display {
+      background: #151515;
+      padding: 24px;
+      border-radius: 8px;
+      font-size: 24px;
+      line-height: 1.6;
+      color: #646669;
+      user-select: none;
+    }
+
+    .correct {
+      color: #e2b714;
+    }
+
+    .incorrect {
+      color: #ca4754;
+    }
+
+    #caret {
+      display: inline-block;
+      width: 2px;
+      height: 1.2em;
+      background: #e2b714;
+      margin-left: -2px;
+      animation: blink 1s infinite;
+      vertical-align: bottom;
+    }
+
+    @keyframes blink {
+      0%, 50%, 100% { opacity: 1; }
+      25%, 75% { opacity: 0; }
+    }
+
+    #text-input {
+      opacity: 0;
+      position: absolute;
+    }
+
+    .stats {
+      margin-top: 20px;
+      display: flex;
+      justify-content: space-between;
+      color: #646669;
+      font-size: 18px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">typing<span>battle</span></div>
+
+    <div id="text-display"></div>
+
+    <input
+      type="text"
+      id="text-input"
+      autofocus
+      autocomplete="off"
+      spellcheck="false"
+    />
+
+    <div class="stats">
+      <div>WPM: <span id="wpm">0</span></div>
+      <div>Accuracy: <span id="accuracy">100</span>%</div>
+    </div>
+  </div>
+
+  <script>
+    const text =
+      "the quick brown fox jumps over the lazy dog this is a typing battle game";
+
+    const textDisplay = document.getElementById("text-display");
+    const textInput = document.getElementById("text-input");
+    const wpmEl = document.getElementById("wpm");
+    const accuracyEl = document.getElementById("accuracy");
+
+    let startTime = null;
+    let correctChars = 0;
+    let totalTyped = 0;
+
+    function loadText() {
+      textDisplay.innerHTML = "";
+      text.split("").forEach((char, index) => {
+        const span = document.createElement("span");
+        span.innerText = char;
+        span.dataset.index = index;
+        textDisplay.appendChild(span);
+      });
+
+      const caret = document.createElement("span");
+      caret.id = "caret";
+      textDisplay.appendChild(caret);
+    }
+
+    function updateCaret(position) {
+      const spans = textDisplay.querySelectorAll("span:not(#caret)");
+      const caret = document.getElementById("caret");
+
+      if (spans[position]) {
+        spans[position].after(caret);
+      }
+    }
+
+    textInput.addEventListener("input", () => {
+      if (!startTime) startTime = new Date();
+
+      const inputChars = textInput.value.split("");
+      const spans = textDisplay.querySelectorAll("span:not(#caret)");
+
+      correctChars = 0;
+      totalTyped = inputChars.length;
+
+      spans.forEach((span, index) => {
+        const typedChar = inputChars[index];
+
+        if (typedChar == null) {
+          span.classList.remove("correct", "incorrect");
+        } else if (typedChar === span.innerText) {
+          span.classList.add("correct");
+          span.classList.remove("incorrect");
+          correctChars++;
+        } else {
+          span.classList.add("incorrect");
+          span.classList.remove("correct");
+        }
+      });
+
+      updateCaret(inputChars.length);
+      updateStats();
+    });
+
+    function updateStats() {
+      const timeElapsed = (new Date() - startTime) / 1000 / 60;
+      const wpm = Math.round((correctChars / 5) / timeElapsed) || 0;
+      const accuracy = totalTyped
+        ? Math.round((correctChars / totalTyped) * 100)
+        : 100;
+
+      wpmEl.innerText = wpm;
+      accuracyEl.innerText = accuracy;
+    }
+
+    loadText();
+  </script>
+</body>
+</html>
