@@ -2,172 +2,284 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Mini English Practice</title>
+<title>Tactical Deployment</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
 body {
-  font-family: Arial, sans-serif;
-  background: #f2f4f7;
   margin: 0;
+  background: #0f1115;
+  color: #e5e7eb;
+  font-family: system-ui;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
 }
 
-header {
-  background: #1976d2;
-  color: white;
-  padding: 16px;
-  text-align: center;
+#game {
+  display: grid;
+  grid-template-columns: auto 220px;
+  gap: 20px;
 }
 
-nav button {
-  margin: 6px;
-  padding: 10px 16px;
-  border: none;
-  border-radius: 4px;
+#board {
+  display: grid;
+  grid-template-columns: repeat(5, 70px);
+  grid-template-rows: repeat(5, 70px);
+  border: 2px solid #2a2f3a;
+}
+
+.tile {
+  border: 1px solid #1f2430;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 14px;
   cursor: pointer;
+}
+
+.tile.dark { background: #141824; }
+.tile.light { background: #181d2a; }
+
+.tile.highlight { outline: 2px solid #4ade80; }
+.tile.enemy { outline: 2px solid #ef4444; }
+
+.unit {
   font-weight: bold;
-  color: #1976d2;
 }
 
-main {
-  max-width: 800px;
-  margin: 20px auto;
-  background: white;
-  padding: 20px;
+.player { color: #4ade80; }
+.enemyUnit { color: #ef4444; }
+
+#side {
+  display: flex;
+  flex-direction: column;
+}
+
+#hand {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.card {
+  background: #1e2330;
+  padding: 8px;
   border-radius: 6px;
-}
-
-.question {
-  margin-top: 16px;
-}
-
-.question label {
-  display: block;
-  margin: 4px 0;
-}
-
-.submit {
-  margin-top: 20px;
-  padding: 10px;
-  width: 100%;
-  background: #1976d2;
-  color: white;
-  border: none;
-  border-radius: 4px;
   cursor: pointer;
 }
 
-audio {
-  width: 100%;
-  margin: 10px 0;
+.card:hover {
+  outline: 2px solid #4ade80;
+}
+
+#log {
+  margin-top: 10px;
+  font-size: 13px;
+  opacity: .8;
 }
 </style>
 </head>
 
 <body>
+<div id="game">
+  <div id="board"></div>
 
-<header>
-  <h1>📘 Mini English Practice</h1>
-  <nav>
-    <button onclick="showReading()">Reading</button>
-    <button onclick="showListening()">Listening</button>
-  </nav>
-</header>
-
-<main id="app"></main>
+  <div id="side">
+    <h3>Hand</h3>
+    <div id="hand"></div>
+    <div id="log"></div>
+  </div>
+</div>
 
 <script>
-// ================= DATA =================
+/* ===== CONFIG ===== */
+const SIZE = 5;
 
-const readingLesson = {
-  title: "The Benefits of Exercise",
-  content: `
-    Exercise is very important for our health.
-    It helps us stay strong, reduce stress,
-    and improve our mood.
-  `,
-  questions: [
-    {
-      q: "What is the passage mainly about?",
-      options: ["Food", "Exercise", "Sleep"],
-      answer: 1
-    }
-  ]
+const UNITS = {
+  Scout: { move: "knight", cost: 1 },
+  Guard: { move: "rook1", cost: 2 },
+  Sniper: { move: "bishop", cost: 3 },
+  Leader: { move: "king", cost: 999 }
 };
 
-const listeningLesson = {
-  title: "A Daily Routine",
-  audio: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
-  transcript: "The speaker is talking about their daily routine.",
-  questions: [
-    {
-      q: "What is the audio about?",
-      options: ["Travel", "Daily routine", "Music"],
-      answer: 1
+/* ===== STATE ===== */
+let board = Array(SIZE * SIZE).fill(null);
+let hand = ["Scout", "Guard", "Sniper"];
+let selectedCard = null;
+let selectedUnit = null;
+
+/* ===== INIT ===== */
+const boardEl = document.getElementById("board");
+const handEl = document.getElementById("hand");
+const logEl = document.getElementById("log");
+
+initBoard();
+drawHand();
+placeEnemyLeader();
+
+function initBoard() {
+  boardEl.innerHTML = "";
+  for (let i = 0; i < SIZE * SIZE; i++) {
+    const tile = document.createElement("div");
+    tile.className = "tile " + ((Math.floor(i / SIZE) + i) % 2 ? "dark" : "light");
+    tile.onclick = () => onTileClick(i);
+    boardEl.appendChild(tile);
+  }
+}
+
+function drawHand() {
+  handEl.innerHTML = "";
+  hand.forEach((u, i) => {
+    const c = document.createElement("div");
+    c.className = "card";
+    c.textContent = u;
+    c.onclick = () => selectCard(i);
+    handEl.appendChild(c);
+  });
+}
+
+/* ===== HAND ===== */
+function selectCard(i) {
+  selectedCard = hand[i];
+  selectedUnit = null;
+  log(`Selected card: ${selectedCard}`);
+}
+
+/* ===== BOARD ===== */
+function onTileClick(i) {
+  const tile = board[i];
+
+  if (selectedCard && !tile) {
+    if (Math.floor(i / SIZE) >= SIZE - 2) {
+      board[i] = { type: selectedCard, owner: "player" };
+      hand.splice(hand.indexOf(selectedCard), 1);
+      selectedCard = null;
+      drawHand();
+      render();
+      enemyTurn();
     }
-  ]
-};
+    return;
+  }
 
-// ================= RENDER =================
-
-function showReading() {
-  document.getElementById("app").innerHTML = `
-    <h2>${readingLesson.title}</h2>
-    <p>${readingLesson.content}</p>
-
-    ${renderQuestions(readingLesson.questions)}
-    <button class="submit" onclick="checkAnswers(${JSON.stringify(readingLesson.questions)})">
-      Submit
-    </button>
-
-    <div id="result"></div>
-  `;
+  if (tile && tile.owner === "player") {
+    selectedUnit = i;
+    highlightMoves(i);
+  } else if (selectedUnit !== null) {
+    attemptMove(selectedUnit, i);
+  }
 }
 
-function showListening() {
-  document.getElementById("app").innerHTML = `
-    <h2>${listeningLesson.title}</h2>
-    <audio controls src="${listeningLesson.audio}"></audio>
-    <p><strong>Transcript:</strong> ${listeningLesson.transcript}</p>
+function attemptMove(from, to) {
+  const unit = board[from];
+  const moves = getMoves(from, unit);
 
-    ${renderQuestions(listeningLesson.questions)}
-    <button class="submit" onclick="checkAnswers(${JSON.stringify(listeningLesson.questions)})">
-      Submit
-    </button>
+  if (!moves.includes(to)) return;
 
-    <div id="result"></div>
-  `;
+  if (board[to]?.type === "Leader") {
+    alert("YOU WIN");
+    location.reload();
+  }
+
+  board[to] = unit;
+  board[from] = null;
+  selectedUnit = null;
+  render();
+  enemyTurn();
 }
 
-function renderQuestions(questions) {
-  return questions.map((q, i) => `
-    <div class="question">
-      <p>${q.q}</p>
-      ${q.options.map((o, j) => `
-        <label>
-          <input type="radio" name="q${i}" value="${j}">
-          ${o}
-        </label>
-      `).join("")}
-    </div>
-  `).join("");
+/* ===== MOVES ===== */
+function getMoves(i, unit) {
+  const x = i % SIZE;
+  const y = Math.floor(i / SIZE);
+  const moves = [];
+
+  const add = (nx, ny) => {
+    if (nx >= 0 && ny >= 0 && nx < SIZE && ny < SIZE) {
+      const idx = ny * SIZE + nx;
+      if (!board[idx] || board[idx].owner !== unit.owner)
+        moves.push(idx);
+    }
+  };
+
+  if (unit.move === "king") {
+    for (let dx=-1;dx<=1;dx++)
+      for (let dy=-1;dy<=1;dy++)
+        if (dx||dy) add(x+dx,y+dy);
+  }
+
+  if (unit.move === "rook1") {
+    [[1,0],[-1,0],[0,1],[0,-1]].forEach(d=>add(x+d[0],y+d[1]));
+  }
+
+  if (unit.move === "bishop") {
+    [[1,1],[-1,1],[1,-1],[-1,-1]].forEach(d=>{
+      for (let s=1;s<SIZE;s++) add(x+d[0]*s,y+d[1]*s);
+    });
+  }
+
+  if (unit.move === "knight") {
+    [[1,2],[2,1],[-1,2],[-2,1],[1,-2],[2,-1],[-1,-2],[-2,-1]]
+      .forEach(d=>add(x+d[0],y+d[1]));
+  }
+
+  return moves;
 }
 
-function checkAnswers(questions) {
-  let score = 0;
-  questions.forEach((q, i) => {
-    const selected = document.querySelector(`input[name="q${i}"]:checked`);
-    if (selected && Number(selected.value) === q.answer) {
-      score++;
+/* ===== ENEMY ===== */
+function placeEnemyLeader() {
+  board[2] = { type: "Leader", owner: "enemy", move: "king" };
+}
+
+function enemyTurn() {
+  setTimeout(() => {
+    for (let i = 0; i < board.length; i++) {
+      const u = board[i];
+      if (u && u.owner === "enemy") {
+        const moves = getMoves(i, u);
+        if (moves.length) {
+          const to = moves[Math.floor(Math.random() * moves.length)];
+          if (board[to]?.type === "Leader") {
+            alert("YOU LOSE");
+            location.reload();
+          }
+          board[to] = u;
+          board[i] = null;
+          break;
+        }
+      }
+    }
+    render();
+  }, 400);
+}
+
+/* ===== RENDER ===== */
+function highlightMoves(i) {
+  render();
+  getMoves(i, board[i]).forEach(m => {
+    boardEl.children[m].classList.add("highlight");
+  });
+}
+
+function render() {
+  [...boardEl.children].forEach((t, i) => {
+    t.classList.remove("highlight","enemy");
+    t.innerHTML = "";
+    if (board[i]) {
+      const u = document.createElement("div");
+      u.className = `unit ${board[i].owner === "player" ? "player" : "enemyUnit"}`;
+      u.textContent = board[i].type[0];
+      t.appendChild(u);
     }
   });
-
-  document.getElementById("result").innerHTML =
-    `<h3>Score: ${score} / ${questions.length}</h3>`;
 }
 
-// default
-showReading();
-</script>
+function log(msg) {
+  logEl.textContent = msg;
+}
 
+render();
+</script>
 </body>
 </html>
