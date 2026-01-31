@@ -2,181 +2,235 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Typing Battle</title>
-
+  <title>Morse Code Rush 📡</title>
   <style>
-    * {
-      box-sizing: border-box;
-      font-family: monospace;
-    }
-
     body {
-      margin: 0;
-      background: #0e0e0e;
-      color: #e2b714;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
-
-    .container {
-      width: 900px;
-    }
-
-    .logo {
+      font-family: system-ui, sans-serif;
+      background: radial-gradient(circle at top, #0f2027, #000);
+      color: #fff;
       text-align: center;
-      font-size: 32px;
-      margin-bottom: 30px;
+      padding: 30px;
     }
 
-    .logo span {
-      color: #646669;
+    h1 {
+      margin-bottom: 10px;
     }
 
-    #text-display {
-      background: #151515;
-      padding: 24px;
-      border-radius: 8px;
-      font-size: 24px;
-      line-height: 1.6;
-      color: #646669;
-      user-select: none;
-    }
-
-    .correct {
-      color: #e2b714;
-    }
-
-    .incorrect {
-      color: #ca4754;
-    }
-
-    #caret {
-      display: inline-block;
-      width: 2px;
-      height: 1.2em;
-      background: #e2b714;
-      margin-left: -2px;
-      animation: blink 1s infinite;
-      vertical-align: bottom;
-    }
-
-    @keyframes blink {
-      0%, 50%, 100% { opacity: 1; }
-      25%, 75% { opacity: 0; }
-    }
-
-    #text-input {
-      opacity: 0;
-      position: absolute;
+    .panel {
+      max-width: 420px;
+      margin: auto;
+      background: rgba(255, 255, 255, 0.08);
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 0 20px rgba(0, 255, 255, 0.15);
     }
 
     .stats {
-      margin-top: 20px;
       display: flex;
       justify-content: space-between;
-      color: #646669;
-      font-size: 18px;
+      margin-bottom: 15px;
+      font-size: 14px;
+    }
+
+    .morse {
+      font-size: 32px;
+      letter-spacing: 6px;
+      margin: 20px 0;
+      height: 40px;
+    }
+
+    input {
+      width: 80px;
+      font-size: 26px;
+      text-align: center;
+      padding: 5px;
+      border-radius: 6px;
+      border: none;
+      outline: none;
+    }
+
+    button {
+      margin-top: 15px;
+      padding: 10px 18px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      background: #00eaff;
+      color: #000;
+      font-weight: bold;
+    }
+
+    .feedback {
+      margin-top: 12px;
+      height: 20px;
+      font-size: 14px;
+    }
+
+    .time-bar {
+      height: 6px;
+      background: #222;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 10px;
+    }
+
+    .time-fill {
+      height: 100%;
+      width: 100%;
+      background: #00eaff;
+      transition: width 0.1s linear;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="logo">typing<span>battle</span></div>
 
-    <div id="text-display"></div>
+<h1>Morse Code Rush 📡</h1>
 
-    <input
-      type="text"
-      id="text-input"
-      autofocus
-      autocomplete="off"
-      spellcheck="false"
-    />
-
-    <div class="stats">
-      <div>WPM: <span id="wpm">0</span></div>
-      <div>Accuracy: <span id="accuracy">100</span>%</div>
-    </div>
+<div class="panel">
+  <div class="stats">
+    <div>Score: <span id="score">0</span></div>
+    <div>Combo: x<span id="combo">1</span></div>
   </div>
 
-  <script>
-    const text =
-      "the quick brown fox jumps over the lazy dog this is a typing battle game";
+  <div class="morse" id="morseDisplay">---</div>
 
-    const textDisplay = document.getElementById("text-display");
-    const textInput = document.getElementById("text-input");
-    const wpmEl = document.getElementById("wpm");
-    const accuracyEl = document.getElementById("accuracy");
+  <input id="answer" maxlength="1" disabled />
 
-    let startTime = null;
-    let correctChars = 0;
-    let totalTyped = 0;
+  <div class="time-bar">
+    <div class="time-fill" id="timeFill"></div>
+  </div>
 
-    function loadText() {
-      textDisplay.innerHTML = "";
-      text.split("").forEach((char, index) => {
-        const span = document.createElement("span");
-        span.innerText = char;
-        span.dataset.index = index;
-        textDisplay.appendChild(span);
-      });
+  <button id="startBtn">START</button>
 
-      const caret = document.createElement("span");
-      caret.id = "caret";
-      textDisplay.appendChild(caret);
-    }
+  <div class="feedback" id="feedback"></div>
+</div>
 
-    function updateCaret(position) {
-      const spans = textDisplay.querySelectorAll("span:not(#caret)");
-      const caret = document.getElementById("caret");
+<script>
+  const MORSE = {
+    A: ".-",    B: "-...",  C: "-.-.",  D: "-..",
+    E: ".",     F: "..-.",  G: "--.",   H: "....",
+    I: "..",    J: ".---",  K: "-.-",   L: ".-..",
+    M: "--",    N: "-.",    O: "---",   P: ".--.",
+    Q: "--.-",  R: ".-.",   S: "...",   T: "-",
+    U: "..-",   V: "...-",  W: ".--",   X: "-..-",
+    Y: "-.--",  Z: "--.."
+  };
 
-      if (spans[position]) {
-        spans[position].after(caret);
+  const letters = Object.keys(MORSE);
+
+  let currentLetter = "";
+  let score = 0;
+  let combo = 1;
+  let timeLeft = 0;
+  let timer = null;
+
+  const scoreEl = document.getElementById("score");
+  const comboEl = document.getElementById("combo");
+  const morseEl = document.getElementById("morseDisplay");
+  const inputEl = document.getElementById("answer");
+  const feedbackEl = document.getElementById("feedback");
+  const timeFill = document.getElementById("timeFill");
+  const startBtn = document.getElementById("startBtn");
+
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+  function beep(duration) {
+    const osc = audioCtx.createOscillator();
+    osc.frequency.value = 700;
+    osc.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + duration);
+  }
+
+  async function playMorse(code) {
+    morseEl.textContent = "";
+    for (const char of code) {
+      if (char === ".") {
+        morseEl.textContent += "•";
+        beep(0.1);
+        await delay(200);
+      } else {
+        morseEl.textContent += "–";
+        beep(0.3);
+        await delay(400);
       }
+      await delay(200);
     }
+  }
 
-    textInput.addEventListener("input", () => {
-      if (!startTime) startTime = new Date();
+  function delay(ms) {
+    return new Promise(res => setTimeout(res, ms));
+  }
 
-      const inputChars = textInput.value.split("");
-      const spans = textDisplay.querySelectorAll("span:not(#caret)");
+  function nextRound() {
+    inputEl.value = "";
+    feedbackEl.textContent = "";
+    currentLetter = letters[Math.floor(Math.random() * letters.length)];
+    const code = MORSE[currentLetter];
 
-      correctChars = 0;
-      totalTyped = inputChars.length;
+    timeLeft = Math.max(1500 - score * 20, 600);
+    startTimer();
 
-      spans.forEach((span, index) => {
-        const typedChar = inputChars[index];
+    playMorse(code);
+  }
 
-        if (typedChar == null) {
-          span.classList.remove("correct", "incorrect");
-        } else if (typedChar === span.innerText) {
-          span.classList.add("correct");
-          span.classList.remove("incorrect");
-          correctChars++;
-        } else {
-          span.classList.add("incorrect");
-          span.classList.remove("correct");
-        }
-      });
+  function startTimer() {
+    clearInterval(timer);
+    let start = Date.now();
 
-      updateCaret(inputChars.length);
-      updateStats();
-    });
+    timer = setInterval(() => {
+      const elapsed = Date.now() - start;
+      const remaining = Math.max(timeLeft - elapsed, 0);
+      timeFill.style.width = (remaining / timeLeft) * 100 + "%";
 
-    function updateStats() {
-      const timeElapsed = (new Date() - startTime) / 1000 / 60;
-      const wpm = Math.round((correctChars / 5) / timeElapsed) || 0;
-      const accuracy = totalTyped
-        ? Math.round((correctChars / totalTyped) * 100)
-        : 100;
+      if (remaining <= 0) {
+        clearInterval(timer);
+        fail();
+      }
+    }, 50);
+  }
 
-      wpmEl.innerText = wpm;
-      accuracyEl.innerText = accuracy;
+  function success() {
+    clearInterval(timer);
+    score += 10 * combo;
+    combo++;
+    updateStats();
+    nextRound();
+  }
+
+  function fail() {
+    feedbackEl.textContent =
+      `❌ ${currentLetter} = ${MORSE[currentLetter]}`;
+    combo = 1;
+    updateStats();
+    setTimeout(nextRound, 1200);
+  }
+
+  function updateStats() {
+    scoreEl.textContent = score;
+    comboEl.textContent = combo;
+  }
+
+  inputEl.addEventListener("input", () => {
+    const guess = inputEl.value.toUpperCase();
+    if (!guess) return;
+
+    if (guess === currentLetter) {
+      feedbackEl.textContent = "✔️ Correct!";
+      success();
+    } else {
+      fail();
     }
+  });
 
-    loadText();
-  </script>
+  startBtn.onclick = () => {
+    startBtn.disabled = true;
+    inputEl.disabled = false;
+    inputEl.focus();
+    nextRound();
+  };
+</script>
+
 </body>
 </html>
