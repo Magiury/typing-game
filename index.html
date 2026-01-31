@@ -26,6 +26,21 @@ input {
   font-size:20px;
   outline:none;
 }
+
+.caret {
+  display:inline-block;
+  width:2px;
+  height:1.2em;
+  background:#fff;
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0%,50% { opacity:1 }
+  51%,100% { opacity:0 }
+}
+
+
 </style>
 </head>
 <body>
@@ -34,9 +49,52 @@ input {
 <div id="status">Connecting...</div>
 <div id="score">You 0 — 0 Opponent</div>
 <div id="game"></div>
+<div id="text">
+  <span class="typed"></span><span class="caret"></span>
+</div>
 </div>
 
 <script>
+
+const MORSE_TABLE = {
+  ".-":"A","-...":"B","-.-.":"C","-..":"D",".":"E",
+  "..-.":"F","--.":"G","....":"H","..":"I",".---":"J",
+  "-.-":"K",".-..":"L","--":"M","-.":"N","---":"O",
+  ".--.":"P","--.-":"Q",".-.":"R","...":"S","-":"T",
+  "..-":"U","...-":"V",".--":"W","-..-":"X","-.--":"Y","--..":"Z",
+  "-----":"0",".----":"1","..---":"2","...--":"3","....-":"4",
+  ".....":"5","-....":"6","--...":"7","---..":"8","----.":"9"
+};
+
+function parseMorseFromSpaces(spaces) {
+  let result = "";
+  let current = "";
+  let i = 0;
+
+  while (i < spaces.length) {
+    let count = 0;
+    while (spaces[i] === " ") {
+      count++;
+      i++;
+    }
+
+    if (count === 1) current += ".";
+    else if (count === 3) current += "-";
+    else if (count >= 7) {
+      if (current) {
+        result += MORSE_TABLE[current] || "?";
+        current = "";
+      }
+    }
+  }
+
+  if (current) {
+    result += MORSE_TABLE[current] || "?";
+  }
+
+  return result;
+}
+
 const ws = new WebSocket("https://typing-game-qobm.onrender.com"); // ← SẼ ĐỔI SAU
 
 let me = 0;
@@ -57,7 +115,11 @@ ws.onmessage = e => {
     updateScore(d.scores);
     setRole(d.sender);
   }
-  if (d.type === "playMorse") showDecode();
+  if (d.type === "playMorse") {
+    playMorseAudio(d.morse);
+    showDecode(d.length);
+  }
+
   if (d.type === "roundEnd") {
     updateScore(d.scores);
     setRole(d.sender);
@@ -82,7 +144,13 @@ function showSend() {
       ws.send(JSON.stringify({
         type:"morse",
         morse,
-        text:"HELLO"
+        const answer = parseMorseFromSpaces(morse);
+        
+        ws.send(JSON.stringify({
+          type: "morse",
+          morse,
+          text: answer
+        }));
       }));
       morse = "";
       i.value = "";
@@ -91,22 +159,80 @@ function showSend() {
   game.appendChild(i);
 }
 
-function showDecode() {
-  game.innerHTML = `<input id="g" placeholder="Type decoded text"/>`;
+function showDecode(charCount) {
+  game.innerHTML = `
+    <div id="timer"></div>
+    <input id="g" placeholder="Type decoded text"/>
+  `;
+
+  let timeLeft = charCount * 3;
+  const timerDiv = document.getElementById("timer");
+  timerDiv.textContent = `Time: ${timeLeft}s`;
+
+  const interval = setInterval(() => {
+    timeLeft--;
+    timerDiv.textContent = `Time: ${timeLeft}s`;
+
+    if (timeLeft <= 0) {
+      clearInterval(interval);
+      submitGuess(""); // hết giờ = sai
+    }
+  }, 1000);
+
   document.getElementById("g").onkeydown = e => {
     if (e.key === "Enter") {
-      ws.send(JSON.stringify({
-        type:"guess",
-        text:e.target.value.toUpperCase(),
-        player:me
-      }));
+      clearInterval(interval);
+      submitGuess(e.target.value.toUpperCase());
     }
   };
 }
 
+
+
 function updateScore(s) {
   score.textContent = `You ${s[me]} — ${s[1-me]} Opponent`;
 }
+
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function beep(duration) {
+  const osc = audioCtx.createOscillator();
+  osc.type = "sine";
+  osc.frequency.value = 600;
+
+  const gain = audioCtx.createGain();
+  gain.gain.value = 0.1;
+
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+
+  osc.start();
+  osc.stop(audioCtx.currentTime + duration);
+}
+
+function playMorseAudio(spaces) {
+  let t = 0;
+
+  for (let i = 0; i < spaces.length; ) {
+    let count = 0;
+    while (spaces[i] === " ") {
+      count++;
+      i++;
+    }
+
+    if (count === 1) {
+      setTimeout(() => beep(0.1), t);
+      t += 200;
+    } else if (count === 3) {
+      setTimeout(() => beep(0.3), t);
+      t += 400;
+    } else {
+      t += 600;
+    }
+  }
+}
+
 </script>
 </body>
 </html>
+
