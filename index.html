@@ -1,176 +1,288 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
+<meta charset="UTF-8" />
 <title>MorseType</title>
+
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap" rel="stylesheet">
+
 <style>
-body {
-  background:#111;
-  color:#eee;
-  font-family: monospace;
+:root{
+  --bg:#323437;
+  --fg:#d1d0c5;
+  --sub:#646669;
+  --accent:#a970ff;
+  --good:#7ad07a;
+  --bad:#ff6b6b;
+}
+
+*{box-sizing:border-box}
+
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--fg);
+  font-family:'JetBrains Mono', monospace;
   display:flex;
   justify-content:center;
+  min-height:100vh;
+}
+
+#app{
+  width:100%;
+  max-width:1200px;
+  padding:30px 40px;
+}
+
+#header{
+  display:flex;
+  justify-content:space-between;
   align-items:center;
-  height:100vh;
+  margin-bottom:40px;
 }
-#app { width:700px }
-h1 { text-align:center; letter-spacing:4px }
-#top { display:flex; justify-content:space-between; margin-bottom:10px }
-select,button {
-  background:#222;
-  color:#eee;
-  border:1px solid #333;
-  padding:5px;
+
+#logo{
+  font-size:22px;
+  font-weight:600;
 }
-#text {
-  font-size:24px;
-  line-height:1.6;
-  margin:20px 0;
+#logo span{color:var(--accent)}
+
+#modes{
+  display:flex;
+  justify-content:center;
+  gap:22px;
+  margin-bottom:60px;
+  color:var(--sub);
 }
-.correct { color:#4caf50 }
-.wrong { color:#f44336 }
-.caret {
+
+.mode{
+  cursor:pointer;
+}
+.mode.active{color:var(--accent)}
+
+#game{text-align:center}
+
+#focus{opacity:.7;margin-bottom:20px}
+
+#morse{
+  font-size:26px;
+  margin-bottom:20px;
+  letter-spacing:3px;
+}
+
+#text{
+  font-size:32px;
+  min-height:50px;
+}
+
+.correct{color:var(--good)}
+
+.caret{
   display:inline-block;
   width:2px;
   height:1.2em;
-  background:#eee;
-  animation: blink 1s infinite;
+  background:var(--fg);
+  animation:blink 1s infinite;
+  margin-left:2px;
 }
-@keyframes blink {
-  0%,50%{opacity:1}
-  51%,100%{opacity:0}
+
+@keyframes blink{
+  50%{opacity:0}
 }
-#status { text-align:center; opacity:.7 }
-#timer { text-align:right }
-#morse { font-size:28px; text-align:center; letter-spacing:6px }
+
+#decodeInput{
+  margin-top:20px;
+  padding:8px;
+  font-size:18px;
+  background:#2a2b2d;
+  border:none;
+  color:var(--fg);
+}
+
+#decodeSubmit{
+  margin-left:10px;
+  padding:8px 14px;
+}
+
+#result{
+  margin-top:50px;
+  display:none;
+  gap:30px;
+  justify-content:center;
+  color:var(--sub);
+}
+
+.result-big{
+  font-size:42px;
+  color:var(--accent);
+}
 </style>
 </head>
 
 <body>
+
 <div id="app">
-  <h1>MORSETYPE</h1>
 
-  <div id="top">
-    <select id="mode">
-      <option value="decode">Decode</option>
-      <option value="encode">Encode</option>
-    </select>
-
-    <select id="timeSelect">
-      <option value="15">15s</option>
-      <option value="30">30s</option>
-      <option value="60" selected>60s</option>
-    </select>
-
-    <button onclick="start()">Start</button>
+  <div id="header">
+    <div id="logo"><span>mt</span> morseType</div>
   </div>
 
-  <div id="timer"></div>
-  <div id="morse"></div>
+  <div id="modes">
+    <div class="mode active" data-mode="decode">decode</div>
+    <div class="mode" data-mode="encode">encode</div>
+    <div class="mode" data-mode="practice">practice</div>
+  </div>
 
-  <div id="text"></div>
-  <div id="status">Press Start</div>
+  <div id="game">
+    <div id="focus">Press any key to start</div>
+
+    <div id="morse"></div>
+
+    <div id="text"></div>
+
+    <input id="decodeInput" placeholder="type decoded text" style="display:none">
+    <button id="decodeSubmit" style="display:none">submit</button>
+
+    <div id="result"></div>
+  </div>
+
 </div>
 
 <script>
+/* ========= CORE ========= */
+
 const MORSE = {
   A:".-",B:"-...",C:"-.-.",D:"-..",E:".",F:"..-.",G:"--.",H:"....",
   I:"..",J:".---",K:"-.-",L:".-..",M:"--",N:"-.",O:"---",
   P:".--.",Q:"--.-",R:".-.",S:"...",T:"-",
-  U:"..-",V:"...-",W:".--",X:"-..-",Y:"-.--",Z:"--..",
-  0:"-----",1:".----",2:"..---",3:"...--",4:"....-",5:".....",
-  6:"-....",7:"--...",8:"---..",9:"----.",
-  " ":"/"
+  U:"..-",V:"...-",W:".--",X:"-..-",Y:"-.--",Z:"--.."
 };
 
-const REVERSE = Object.fromEntries(Object.entries(MORSE).map(a=>a.reverse()));
-
-let text="", index=0, timer, timeLeft, mode;
-
-const audioCtx = new (window.AudioContext||window.webkitAudioContext)();
-function beep(d){
-  const o=audioCtx.createOscillator();
-  const g=audioCtx.createGain();
-  o.frequency.value=600; g.gain.value=.1;
-  o.connect(g); g.connect(audioCtx.destination);
-  o.start(); o.stop(audioCtx.currentTime+d);
-}
-
-function playMorse(str){
-  let t=0;
-  for(let c of str){
-    if(c==="."){ setTimeout(()=>beep(.1),t); t+=200 }
-    else if(c==="-"){ setTimeout(()=>beep(.3),t); t+=400 }
-    else t+=600;
-  }
-}
+let GAME = {
+  mode:"decode",
+  text:"",
+  index:0,
+  currentMorse:"",
+  spaceDown:0,
+  startTime:0
+};
 
 function genText(){
-  const chars="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  let s="";
-  for(let i=0;i<20;i++){
-    s+=Math.random()<.15?" ":chars[Math.floor(Math.random()*chars.length)];
-  }
-  return s.trim();
+  const c="ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  return Array.from({length:15},()=>c[Math.floor(Math.random()*c.length)]).join("");
 }
 
-function render(){
+function renderText(){
   const el=document.getElementById("text");
   el.innerHTML="";
-  [...text].forEach((c,i)=>{
-    const span=document.createElement("span");
-    span.textContent=c;
-    if(i<index) span.className="correct";
-    if(i===index){
-      span.appendChild(document.createElement("span")).className="caret";
+  [...GAME.text].forEach((c,i)=>{
+    const s=document.createElement("span");
+    s.textContent=c;
+    if(i<GAME.index) s.className="correct";
+    if(i===GAME.index){
+      const caret=document.createElement("span");
+      caret.className="caret";
+      s.appendChild(caret);
     }
-    el.appendChild(span);
+    el.appendChild(s);
   });
 }
 
-function start(){
-  mode=document.getElementById("mode").value;
-  text=genText();
-  index=0;
-  render();
+function showMorse(){
+  document.getElementById("morse").textContent =
+    GAME.text.split("").map(c=>MORSE[c]).join(" ");
+}
 
+function showResult(type){
+  const t=((Date.now()-GAME.startTime)/1000).toFixed(1);
+  document.getElementById("result").style.display="flex";
+  document.getElementById("result").innerHTML=`
+    <div><div class="result-big">${GAME.text.length}</div>chars</div>
+    <div><div class="result-big">${t}s</div>time</div>
+    <div><div class="result-big">${type}</div>mode</div>
+  `;
+}
+
+/* ========= START ========= */
+
+function startGame(){
+  GAME.text=genText();
+  GAME.index=0;
+  GAME.currentMorse="";
+  GAME.spaceDown=0;
+  GAME.startTime=Date.now();
+
+  document.getElementById("result").style.display="none";
+  document.getElementById("decodeInput").style.display="none";
+  document.getElementById("decodeSubmit").style.display="none";
   document.getElementById("morse").textContent="";
-  if(mode==="decode"){
-    const m=[...text].map(c=>MORSE[c]).join(" ");
-    document.getElementById("morse").textContent=m;
-    playMorse(m.replace(/ /g,""));
+  document.getElementById("text").innerHTML="";
+
+  if(GAME.mode==="decode"){
+    showMorse();
+    document.getElementById("decodeInput").value="";
+    document.getElementById("decodeInput").style.display="inline-block";
+    document.getElementById("decodeSubmit").style.display="inline-block";
   }
 
-  timeLeft=+document.getElementById("timeSelect").value;
-  document.getElementById("timer").textContent=`${timeLeft}s`;
-
-  clearInterval(timer);
-  timer=setInterval(()=>{
-    timeLeft--;
-    document.getElementById("timer").textContent=`${timeLeft}s`;
-    if(timeLeft<=0) end();
-  },1000);
+  if(GAME.mode==="encode" || GAME.mode==="practice"){
+    renderText();
+  }
 }
 
-function end(){
-  clearInterval(timer);
-  document.getElementById("status").textContent="Finished";
-}
+/* ========= INPUT ========= */
 
 document.addEventListener("keydown",e=>{
-  if(!text) return;
+  if(e.code==="Space" && !GAME.spaceDown){
+    GAME.spaceDown=Date.now();
+    e.preventDefault();
+  }
+});
 
-  if(mode==="decode"){
-    if(e.key.toUpperCase()===text[index]){
-      index++; render();
-      if(index>=text.length) end();
+document.addEventListener("keyup",e=>{
+  if(e.code!=="Space") return;
+  const d=Date.now()-GAME.spaceDown;
+  GAME.spaceDown=0;
+  const sym=d<200?".":"-";
+
+  if(GAME.mode==="encode"||GAME.mode==="practice"){
+    GAME.currentMorse+=sym;
+    const exp=MORSE[GAME.text[GAME.index]];
+
+    if(!exp.startsWith(GAME.currentMorse)){
+      GAME.currentMorse="";
+      if(GAME.mode==="practice") GAME.index++;
+      return renderText();
     }
-  }else{
-    if(e.key===" "){
-      beep(.1);
+
+    if(GAME.currentMorse===exp){
+      GAME.index++;
+      GAME.currentMorse="";
+      renderText();
+      if(GAME.index>=GAME.text.length) showResult(GAME.mode);
     }
   }
 });
+
+/* ========= DECODE SUBMIT ========= */
+
+decodeSubmit.onclick=()=>{
+  showResult("decode");
+};
+
+/* ========= MODE SWITCH ========= */
+
+document.querySelectorAll(".mode").forEach(b=>{
+  b.onclick=()=>{
+    document.querySelectorAll(".mode").forEach(x=>x.classList.remove("active"));
+    b.classList.add("active");
+    GAME.mode=b.dataset.mode;
+    startGame();
+  };
+});
+
+startGame();
 </script>
+
 </body>
 </html>
