@@ -1,288 +1,173 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
 <head>
-<meta charset="UTF-8" />
-<title>MorseType</title>
-
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap" rel="stylesheet">
-
+<meta charset="UTF-8">
+<title>Morse Typing Game</title>
 <style>
-:root{
-  --bg:#323437;
-  --fg:#d1d0c5;
-  --sub:#646669;
-  --accent:#a970ff;
-  --good:#7ad07a;
-  --bad:#ff6b6b;
-}
-
-*{box-sizing:border-box}
-
-body{
-  margin:0;
-  background:var(--bg);
-  color:var(--fg);
-  font-family:'JetBrains Mono', monospace;
-  display:flex;
-  justify-content:center;
-  min-height:100vh;
-}
-
-#app{
-  width:100%;
-  max-width:1200px;
-  padding:30px 40px;
-}
-
-#header{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  margin-bottom:40px;
-}
-
-#logo{
-  font-size:22px;
-  font-weight:600;
-}
-#logo span{color:var(--accent)}
-
-#modes{
-  display:flex;
-  justify-content:center;
-  gap:22px;
-  margin-bottom:60px;
-  color:var(--sub);
-}
-
-.mode{
-  cursor:pointer;
-}
-.mode.active{color:var(--accent)}
-
-#game{text-align:center}
-
-#focus{opacity:.7;margin-bottom:20px}
-
-#morse{
-  font-size:26px;
-  margin-bottom:20px;
-  letter-spacing:3px;
-}
-
-#text{
-  font-size:32px;
-  min-height:50px;
-}
-
-.correct{color:var(--good)}
-
-.caret{
-  display:inline-block;
-  width:2px;
-  height:1.2em;
-  background:var(--fg);
-  animation:blink 1s infinite;
-  margin-left:2px;
-}
-
-@keyframes blink{
-  50%{opacity:0}
-}
-
-#decodeInput{
-  margin-top:20px;
-  padding:8px;
-  font-size:18px;
-  background:#2a2b2d;
-  border:none;
-  color:var(--fg);
-}
-
-#decodeSubmit{
-  margin-left:10px;
-  padding:8px 14px;
-}
-
-#result{
-  margin-top:50px;
-  display:none;
-  gap:30px;
-  justify-content:center;
-  color:var(--sub);
-}
-
-.result-big{
-  font-size:42px;
-  color:var(--accent);
-}
+  body {
+    font-family: monospace;
+    background: #0f1220;
+    color: #fff;
+    padding: 20px;
+  }
+  button {
+    margin: 5px;
+    padding: 6px 12px;
+    cursor: pointer;
+  }
+  input {
+    padding: 6px;
+    width: 300px;
+    font-family: monospace;
+  }
+  .box {
+    border: 1px solid #444;
+    padding: 15px;
+    margin-top: 15px;
+  }
+  .big {
+    font-size: 24px;
+    margin: 10px 0;
+  }
 </style>
 </head>
-
 <body>
 
-<div id="app">
+<h1>🎧 Morse Typing Game</h1>
 
-  <div id="header">
-    <div id="logo"><span>mt</span> morseType</div>
-  </div>
+<button onclick="setMode('decode')">Decode</button>
+<button onclick="setMode('practice')">Practice</button>
+<button onclick="setMode('free')">Free Mode</button>
 
-  <div id="modes">
-    <div class="mode active" data-mode="decode">decode</div>
-    <div class="mode" data-mode="encode">encode</div>
-    <div class="mode" data-mode="practice">practice</div>
-  </div>
-
-  <div id="game">
-    <div id="focus">Press any key to start</div>
-
-    <div id="morse"></div>
-
-    <div id="text"></div>
-
-    <input id="decodeInput" placeholder="type decoded text" style="display:none">
-    <button id="decodeSubmit" style="display:none">submit</button>
-
-    <div id="result"></div>
-  </div>
-
-</div>
+<div id="game" class="box"></div>
 
 <script>
-/* ========= CORE ========= */
-
 const MORSE = {
-  A:".-",B:"-...",C:"-.-.",D:"-..",E:".",F:"..-.",G:"--.",H:"....",
-  I:"..",J:".---",K:"-.-",L:".-..",M:"--",N:"-.",O:"---",
-  P:".--.",Q:"--.-",R:".-.",S:"...",T:"-",
-  U:"..-",V:"...-",W:".--",X:"-..-",Y:"-.--",Z:"--.."
+  A: ".-", B: "-...", C: "-.-.", D: "-..", E: ".", F: "..-.",
+  G: "--.", H: "....", I: "..", J: ".---", K: "-.-", L: ".-..",
+  M: "--", N: "-.", O: "---", P: ".--.", Q: "--.-", R: ".-.",
+  S: "...", T: "-", U: "..-", V: "...-", W: ".--", X: "-..-",
+  Y: "-.--", Z: "--.."
 };
 
-let GAME = {
-  mode:"decode",
-  text:"",
-  index:0,
-  currentMorse:"",
-  spaceDown:0,
-  startTime:0
-};
+const REVERSE = Object.fromEntries(
+  Object.entries(MORSE).map(([k,v]) => [v,k])
+);
 
-function genText(){
-  const c="ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  return Array.from({length:15},()=>c[Math.floor(Math.random()*c.length)]).join("");
+const WORDS = ["HELLO", "MORSE", "CODE", "TYPE", "SIGNAL"];
+
+let currentWord = "";
+let practiceIndex = 0;
+let userInput = "";
+
+function randomWord() {
+  return WORDS[Math.floor(Math.random()*WORDS.length)];
 }
 
-function renderText(){
-  const el=document.getElementById("text");
-  el.innerHTML="";
-  [...GAME.text].forEach((c,i)=>{
-    const s=document.createElement("span");
-    s.textContent=c;
-    if(i<GAME.index) s.className="correct";
-    if(i===GAME.index){
-      const caret=document.createElement("span");
-      caret.className="caret";
-      s.appendChild(caret);
-    }
-    el.appendChild(s);
-  });
+function setMode(mode) {
+  if (mode === "decode") loadDecode();
+  if (mode === "practice") loadPractice();
+  if (mode === "free") loadFree();
 }
 
-function showMorse(){
-  document.getElementById("morse").textContent =
-    GAME.text.split("").map(c=>MORSE[c]).join(" ");
-}
+/* ===================== DECODE ===================== */
+function loadDecode() {
+  currentWord = randomWord();
+  userInput = "";
 
-function showResult(type){
-  const t=((Date.now()-GAME.startTime)/1000).toFixed(1);
-  document.getElementById("result").style.display="flex";
-  document.getElementById("result").innerHTML=`
-    <div><div class="result-big">${GAME.text.length}</div>chars</div>
-    <div><div class="result-big">${t}s</div>time</div>
-    <div><div class="result-big">${type}</div>mode</div>
+  const morse = currentWord.split("")
+    .map(c => MORSE[c])
+    .join(" / ");
+
+  game.innerHTML = `
+    <h2>Decode Mode</h2>
+    <div class="big">${morse}</div>
+    <input id="decodeInput" placeholder="Nhập chữ..." />
+    <br>
+    <button onclick="submitDecode()">Submit</button>
+    <button onclick="loadDecode()">Restart</button>
+    <div id="result"></div>
   `;
 }
 
-/* ========= START ========= */
+function submitDecode() {
+  const input = document.getElementById("decodeInput").value.toUpperCase();
+  let correct = 0;
 
-function startGame(){
-  GAME.text=genText();
-  GAME.index=0;
-  GAME.currentMorse="";
-  GAME.spaceDown=0;
-  GAME.startTime=Date.now();
-
-  document.getElementById("result").style.display="none";
-  document.getElementById("decodeInput").style.display="none";
-  document.getElementById("decodeSubmit").style.display="none";
-  document.getElementById("morse").textContent="";
-  document.getElementById("text").innerHTML="";
-
-  if(GAME.mode==="decode"){
-    showMorse();
-    document.getElementById("decodeInput").value="";
-    document.getElementById("decodeInput").style.display="inline-block";
-    document.getElementById("decodeSubmit").style.display="inline-block";
+  for (let i=0;i<currentWord.length;i++) {
+    if (input[i] === currentWord[i]) correct++;
   }
 
-  if(GAME.mode==="encode" || GAME.mode==="practice"){
-    renderText();
+  const acc = Math.round(correct / currentWord.length * 100);
+  document.getElementById("result").innerHTML =
+    `Accuracy: <b>${acc}%</b> (${correct}/${currentWord.length})`;
+}
+
+/* ===================== PRACTICE ===================== */
+function loadPractice() {
+  currentWord = randomWord();
+  practiceIndex = 0;
+  renderPractice();
+}
+
+function renderPractice() {
+  const char = currentWord[practiceIndex];
+  game.innerHTML = `
+    <h2>Practice Mode</h2>
+    <div class="big">Chữ: ${char}</div>
+    <div>Morse: <b>${MORSE[char]}</b></div>
+    <input id="practiceInput" placeholder="Nhập morse..." />
+    <br>
+    <button onclick="checkPractice()">Check</button>
+    <div>${practiceIndex+1}/${currentWord.length}</div>
+  `;
+}
+
+function checkPractice() {
+  const input = document.getElementById("practiceInput").value.trim();
+  if (input === MORSE[currentWord[practiceIndex]]) {
+    practiceIndex++;
+    if (practiceIndex >= currentWord.length) {
+      game.innerHTML = `<h2>🎉 Hoàn thành!</h2>
+        <button onclick="loadPractice()">Word khác</button>`;
+    } else {
+      renderPractice();
+    }
+  } else {
+    alert("Sai rồi, thử lại!");
   }
 }
 
-/* ========= INPUT ========= */
+/* ===================== FREE ===================== */
+function loadFree() {
+  game.innerHTML = `
+    <h2>Free Mode</h2>
+    <p>Gõ chữ → morse hoặc morse → chữ</p>
+    <input id="freeInput" placeholder="VD: SOS hoặc ... --- ..." />
+    <button onclick="convertFree()">Convert</button>
+    <div id="freeResult" class="big"></div>
+  `;
+}
 
-document.addEventListener("keydown",e=>{
-  if(e.code==="Space" && !GAME.spaceDown){
-    GAME.spaceDown=Date.now();
-    e.preventDefault();
-  }
-});
+function convertFree() {
+  const text = document.getElementById("freeInput").value.trim();
 
-document.addEventListener("keyup",e=>{
-  if(e.code!=="Space") return;
-  const d=Date.now()-GAME.spaceDown;
-  GAME.spaceDown=0;
-  const sym=d<200?".":"-";
-
-  if(GAME.mode==="encode"||GAME.mode==="practice"){
-    GAME.currentMorse+=sym;
-    const exp=MORSE[GAME.text[GAME.index]];
-
-    if(!exp.startsWith(GAME.currentMorse)){
-      GAME.currentMorse="";
-      if(GAME.mode==="practice") GAME.index++;
-      return renderText();
+  if (text.includes(".") || text.includes("-")) {
+    // morse → chữ
+    const letters = text.split(" ");
+    let out = "";
+    for (let m of letters) {
+      out += REVERSE[m] || "?";
     }
-
-    if(GAME.currentMorse===exp){
-      GAME.index++;
-      GAME.currentMorse="";
-      renderText();
-      if(GAME.index>=GAME.text.length) showResult(GAME.mode);
-    }
+    freeResult.innerText = out;
+  } else {
+    // chữ → morse
+    freeResult.innerText = text.toUpperCase()
+      .split("")
+      .map(c => MORSE[c] || "?")
+      .join(" ");
   }
-});
-
-/* ========= DECODE SUBMIT ========= */
-
-decodeSubmit.onclick=()=>{
-  showResult("decode");
-};
-
-/* ========= MODE SWITCH ========= */
-
-document.querySelectorAll(".mode").forEach(b=>{
-  b.onclick=()=>{
-    document.querySelectorAll(".mode").forEach(x=>x.classList.remove("active"));
-    b.classList.add("active");
-    GAME.mode=b.dataset.mode;
-    startGame();
-  };
-});
-
-startGame();
+}
 </script>
-
 </body>
 </html>
