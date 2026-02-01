@@ -1,238 +1,176 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="UTF-8" />
-<title>Morse Duel</title>
+<meta charset="UTF-8">
+<title>MorseType</title>
 <style>
 body {
-  background:#0e0e0e;
-  color:#e5e5e5;
-  font-family:monospace;
+  background:#111;
+  color:#eee;
+  font-family: monospace;
   display:flex;
   justify-content:center;
   align-items:center;
   height:100vh;
 }
-#app { width:600px; }
-h1 { text-align:center; letter-spacing:4px; }
-#status { text-align:center; opacity:.6; margin:10px; }
-#score { text-align:center; margin-bottom:10px; }
-input {
-  width:100%;
-  background:transparent;
-  border:none;
-  border-bottom:1px solid #555;
-  color:white;
-  font-size:20px;
-  outline:none;
+#app { width:700px }
+h1 { text-align:center; letter-spacing:4px }
+#top { display:flex; justify-content:space-between; margin-bottom:10px }
+select,button {
+  background:#222;
+  color:#eee;
+  border:1px solid #333;
+  padding:5px;
 }
-
+#text {
+  font-size:24px;
+  line-height:1.6;
+  margin:20px 0;
+}
+.correct { color:#4caf50 }
+.wrong { color:#f44336 }
 .caret {
   display:inline-block;
   width:2px;
   height:1.2em;
-  background:#fff;
+  background:#eee;
   animation: blink 1s infinite;
 }
-
 @keyframes blink {
-  0%,50% { opacity:1 }
-  51%,100% { opacity:0 }
+  0%,50%{opacity:1}
+  51%,100%{opacity:0}
 }
-
-
+#status { text-align:center; opacity:.7 }
+#timer { text-align:right }
+#morse { font-size:28px; text-align:center; letter-spacing:6px }
 </style>
 </head>
+
 <body>
 <div id="app">
-<h1>M O R S E &nbsp; D U E L</h1>
-<div id="status">Connecting...</div>
-<div id="score">You 0 — 0 Opponent</div>
-<div id="game"></div>
-<div id="text">
-  <span class="typed"></span><span class="caret"></span>
-</div>
+  <h1>MORSETYPE</h1>
+
+  <div id="top">
+    <select id="mode">
+      <option value="decode">Decode</option>
+      <option value="encode">Encode</option>
+    </select>
+
+    <select id="timeSelect">
+      <option value="15">15s</option>
+      <option value="30">30s</option>
+      <option value="60" selected>60s</option>
+    </select>
+
+    <button onclick="start()">Start</button>
+  </div>
+
+  <div id="timer"></div>
+  <div id="morse"></div>
+
+  <div id="text"></div>
+  <div id="status">Press Start</div>
 </div>
 
 <script>
-
-const MORSE_TABLE = {
-  ".-":"A","-...":"B","-.-.":"C","-..":"D",".":"E",
-  "..-.":"F","--.":"G","....":"H","..":"I",".---":"J",
-  "-.-":"K",".-..":"L","--":"M","-.":"N","---":"O",
-  ".--.":"P","--.-":"Q",".-.":"R","...":"S","-":"T",
-  "..-":"U","...-":"V",".--":"W","-..-":"X","-.--":"Y","--..":"Z",
-  "-----":"0",".----":"1","..---":"2","...--":"3","....-":"4",
-  ".....":"5","-....":"6","--...":"7","---..":"8","----.":"9"
+const MORSE = {
+  A:".-",B:"-...",C:"-.-.",D:"-..",E:".",F:"..-.",G:"--.",H:"....",
+  I:"..",J:".---",K:"-.-",L:".-..",M:"--",N:"-.",O:"---",
+  P:".--.",Q:"--.-",R:".-.",S:"...",T:"-",
+  U:"..-",V:"...-",W:".--",X:"-..-",Y:"-.--",Z:"--..",
+  0:"-----",1:".----",2:"..---",3:"...--",4:"....-",5:".....",
+  6:"-....",7:"--...",8:"---..",9:"----.",
+  " ":"/"
 };
 
-function parseMorseFromSpaces(spaces) {
-  let result = "";
-  let current = "";
-  let i = 0;
+const REVERSE = Object.fromEntries(Object.entries(MORSE).map(a=>a.reverse()));
 
-  while (i < spaces.length) {
-    let count = 0;
-    while (spaces[i] === " ") {
-      count++;
-      i++;
-    }
+let text="", index=0, timer, timeLeft, mode;
 
-    if (count === 1) current += ".";
-    else if (count === 3) current += "-";
-    else if (count >= 7) {
-      if (current) {
-        result += MORSE_TABLE[current] || "?";
-        current = "";
-      }
-    }
-  }
-
-  if (current) {
-    result += MORSE_TABLE[current] || "?";
-  }
-
-  return result;
+const audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+function beep(d){
+  const o=audioCtx.createOscillator();
+  const g=audioCtx.createGain();
+  o.frequency.value=600; g.gain.value=.1;
+  o.connect(g); g.connect(audioCtx.destination);
+  o.start(); o.stop(audioCtx.currentTime+d);
 }
 
-const ws = new WebSocket("https://typing-game-qobm.onrender.com"); // ← SẼ ĐỔI SAU
-
-let me = 0;
-let sender = false;
-
-const status = document.getElementById("status");
-const score = document.getElementById("score");
-const game = document.getElementById("game");
-
-ws.onopen = () => ws.send(JSON.stringify({ type:"join" }));
-
-ws.onmessage = e => {
-  const d = JSON.parse(e.data);
-
-  if (d.type === "waiting") status.textContent = "Waiting for player...";
-  if (d.type === "start") {
-    me = d.you;
-    updateScore(d.scores);
-    setRole(d.sender);
+function playMorse(str){
+  let t=0;
+  for(let c of str){
+    if(c==="."){ setTimeout(()=>beep(.1),t); t+=200 }
+    else if(c==="-"){ setTimeout(()=>beep(.3),t); t+=400 }
+    else t+=600;
   }
-  if (d.type === "playMorse") {
-    playMorseAudio(d.morse);
-    showDecode(d.length);
-  }
-
-  if (d.type === "roundEnd") {
-    updateScore(d.scores);
-    setRole(d.sender);
-  }
-  if (d.type === "gameOver") status.textContent = "GAME OVER";
-};
-
-function setRole(s) {
-  sender = s === me;
-  game.innerHTML = "";
-  status.textContent = sender ? "Send Morse" : "Decode Morse";
-  if (sender) showSend();
 }
 
-function showSend() {
-  const i = document.createElement("input");
-  i.placeholder = "Press SPACE, Enter to send";
-  let morse = "";
-  i.onkeydown = e => {
-    if (e.code === "Space") { morse += " "; e.preventDefault(); }
-    if (e.key === "Enter") {
-      ws.send(JSON.stringify({
-        type:"morse",
-        morse,
-        const answer = parseMorseFromSpaces(morse);
-        
-        ws.send(JSON.stringify({
-          type: "morse",
-          morse,
-          text: answer
-        }));
-      }));
-      morse = "";
-      i.value = "";
+function genText(){
+  const chars="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let s="";
+  for(let i=0;i<20;i++){
+    s+=Math.random()<.15?" ":chars[Math.floor(Math.random()*chars.length)];
+  }
+  return s.trim();
+}
+
+function render(){
+  const el=document.getElementById("text");
+  el.innerHTML="";
+  [...text].forEach((c,i)=>{
+    const span=document.createElement("span");
+    span.textContent=c;
+    if(i<index) span.className="correct";
+    if(i===index){
+      span.appendChild(document.createElement("span")).className="caret";
     }
-  };
-  game.appendChild(i);
+    el.appendChild(span);
+  });
 }
 
-function showDecode(charCount) {
-  game.innerHTML = `
-    <div id="timer"></div>
-    <input id="g" placeholder="Type decoded text"/>
-  `;
+function start(){
+  mode=document.getElementById("mode").value;
+  text=genText();
+  index=0;
+  render();
 
-  let timeLeft = charCount * 3;
-  const timerDiv = document.getElementById("timer");
-  timerDiv.textContent = `Time: ${timeLeft}s`;
+  document.getElementById("morse").textContent="";
+  if(mode==="decode"){
+    const m=[...text].map(c=>MORSE[c]).join(" ");
+    document.getElementById("morse").textContent=m;
+    playMorse(m.replace(/ /g,""));
+  }
 
-  const interval = setInterval(() => {
+  timeLeft=+document.getElementById("timeSelect").value;
+  document.getElementById("timer").textContent=`${timeLeft}s`;
+
+  clearInterval(timer);
+  timer=setInterval(()=>{
     timeLeft--;
-    timerDiv.textContent = `Time: ${timeLeft}s`;
-
-    if (timeLeft <= 0) {
-      clearInterval(interval);
-      submitGuess(""); // hết giờ = sai
-    }
-  }, 1000);
-
-  document.getElementById("g").onkeydown = e => {
-    if (e.key === "Enter") {
-      clearInterval(interval);
-      submitGuess(e.target.value.toUpperCase());
-    }
-  };
+    document.getElementById("timer").textContent=`${timeLeft}s`;
+    if(timeLeft<=0) end();
+  },1000);
 }
 
-
-
-function updateScore(s) {
-  score.textContent = `You ${s[me]} — ${s[1-me]} Opponent`;
+function end(){
+  clearInterval(timer);
+  document.getElementById("status").textContent="Finished";
 }
 
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+document.addEventListener("keydown",e=>{
+  if(!text) return;
 
-function beep(duration) {
-  const osc = audioCtx.createOscillator();
-  osc.type = "sine";
-  osc.frequency.value = 600;
-
-  const gain = audioCtx.createGain();
-  gain.gain.value = 0.1;
-
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-
-  osc.start();
-  osc.stop(audioCtx.currentTime + duration);
-}
-
-function playMorseAudio(spaces) {
-  let t = 0;
-
-  for (let i = 0; i < spaces.length; ) {
-    let count = 0;
-    while (spaces[i] === " ") {
-      count++;
-      i++;
+  if(mode==="decode"){
+    if(e.key.toUpperCase()===text[index]){
+      index++; render();
+      if(index>=text.length) end();
     }
-
-    if (count === 1) {
-      setTimeout(() => beep(0.1), t);
-      t += 200;
-    } else if (count === 3) {
-      setTimeout(() => beep(0.3), t);
-      t += 400;
-    } else {
-      t += 600;
+  }else{
+    if(e.key===" "){
+      beep(.1);
     }
   }
-}
-
+});
 </script>
 </body>
 </html>
-
