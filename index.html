@@ -128,7 +128,15 @@ const REVERSE = Object.fromEntries(
   Object.entries(MORSE).map(([k,v])=>[v,k])
 );
 
-let GAME={ mode:"decode", text:"", startTime:0 };
+let GAME={
+  mode:"decode",
+  text:"",
+  startTime:0,
+
+  index:0,          // chữ hiện tại
+  currentMorse:""   // morse đang gõ
+};
+
 
 function startGame(){
  morse.textContent="";
@@ -152,9 +160,11 @@ function startGame(){
  }
 
  if(GAME.mode==="encode"){
-   decodeInput.value="";
-   decodeInput.placeholder="type text";
-   decodeInput.style.display="inline-block";
+   GAME.text = randomText();
+   GAME.index = 0;
+   GAME.currentMorse = "";
+
+   text.innerHTML = renderEncodeText();
  }
 
  if(GAME.mode==="practice"){
@@ -167,6 +177,14 @@ function startGame(){
 function randomText(){
  const c="ABCDEFGHIJKLMNOPQRSTUVWXYZ";
  return Array.from({length:8},()=>c[Math.floor(Math.random()*c.length)]).join("");
+}
+
+function renderEncodeText(){
+  return GAME.text.split("").map((c,i)=>{
+    if(i < GAME.index) return `<span style="color:#7ad07a">${c}</span>`;
+    if(i === GAME.index) return `<span style="color:#a970ff">${c}</span>`;
+    return `<span style="opacity:.4">${c}</span>`;
+  }).join("");
 }
 
 function toMorse(str){
@@ -227,6 +245,37 @@ document.querySelectorAll(".mode").forEach(b=>{
 });
 
 startGame();
+
+document.addEventListener("keydown", e=>{
+  if(GAME.mode!=="encode") return;
+
+  if(e.key!=="." && e.key!=="-") return;
+
+  e.preventDefault();
+
+  GAME.currentMorse += e.key;
+
+  const expected = MORSE[GAME.text[GAME.index]];
+
+  // sai prefix → reset morse hiện tại
+  if(!expected.startsWith(GAME.currentMorse)){
+    GAME.currentMorse="";
+    return;
+  }
+
+  // đúng trọn chữ
+  if(GAME.currentMorse === expected){
+    GAME.index++;
+    GAME.currentMorse="";
+
+    if(GAME.index >= GAME.text.length){
+      showResult("100%");
+    }else{
+      text.innerHTML = renderEncodeText();
+    }
+  }
+});
+
 </script>
 </body>
 </html>
