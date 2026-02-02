@@ -62,7 +62,7 @@ body{
 }
 
 input,button{
-  margin-top:20px;
+  margin-top:5px; /* Đã giảm từ 20px xuống 5px theo yêu cầu */
   padding:8px 14px;
   font-size:18px;
   background:#2a2b2d;
@@ -102,14 +102,12 @@ input,button{
   <div id="morse"></div>
   <div id="text"></div>
 
-  <!-- decode -->
   <input id="decodeInput" style="display:none" placeholder="type here">
   <button id="decodeSubmit" style="display:none">submit</button>
   <button id="restartBtn" style="display:none">restart</button>
 
-  <!-- practice / convert -->
   <input id="practiceInput" style="display:none"
-         placeholder="VD: SOS hoặc ... --- ...">
+          placeholder="VD: SOS hoặc ... --- ...">
   <button id="practiceConvert" style="display:none">convert</button>
 
   <div id="result"></div>
@@ -154,8 +152,7 @@ function startGame(){
    morse.textContent=toMorse(GAME.text);
    decodeInput.value="";
    decodeInput.style.display="inline-block";
-   decodeSubmit.style.display="inline-block";
-   restartBtn.style.display="inline-block";
+   // Không hiển thị các nút submit/restart ở đây nữa
    GAME.startTime=Date.now();
  }
 
@@ -197,6 +194,13 @@ decodeInput.oninput=()=>{
    morse.textContent=toMorse(v);
  }
 };
+
+// Gán sự kiện Enter cho decodeInput
+decodeInput.addEventListener("keydown", (e) => {
+  if (GAME.mode === "decode" && e.key === "Enter") {
+    decodeSubmit.click();
+  }
+});
 
 practiceConvert.onclick=()=>{
  const v = practiceInput.value.trim().toUpperCase();
@@ -247,33 +251,40 @@ document.querySelectorAll(".mode").forEach(b=>{
 startGame();
 
 document.addEventListener("keydown", e=>{
-  if(GAME.mode!=="encode") return;
-
-  if(e.key!=="." && e.key!=="-") return;
-
-  e.preventDefault();
-
-  GAME.currentMorse += e.key;
-
-  const expected = MORSE[GAME.text[GAME.index]];
-
-  // sai prefix → reset morse hiện tại
-  if(!expected.startsWith(GAME.currentMorse)){
-    GAME.currentMorse="";
+  // Xử lý tổ hợp Ctrl + R để Restart
+  if (e.ctrlKey && e.key.toLowerCase() === 'r') {
+    e.preventDefault();
+    startGame();
     return;
   }
 
-  // đúng trọn chữ
-  if(GAME.currentMorse === expected){
-    GAME.index++;
-    GAME.currentMorse="";
+ if(GAME.mode!=="encode") return;
 
-    if(GAME.index >= GAME.text.length){
-      showResult("100%");
-    }else{
-      text.innerHTML = renderEncodeText();
-    }
-  }
+ if(e.key!=="." && e.key!=="-") return;
+
+ e.preventDefault();
+
+ GAME.currentMorse += e.key;
+
+ const expected = MORSE[GAME.text[GAME.index]];
+
+ // sai prefix → reset morse hiện tại
+ if(!expected.startsWith(GAME.currentMorse)){
+   GAME.currentMorse="";
+   return;
+ }
+
+ // đúng trọn chữ
+ if(GAME.currentMorse === expected){
+   GAME.index++;
+   GAME.currentMorse="";
+
+   if(GAME.index >= GAME.text.length){
+     showResult("100%");
+   }else{
+     text.innerHTML = renderEncodeText();
+   }
+ }
 });
 
 </script>
