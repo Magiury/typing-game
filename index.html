@@ -267,6 +267,14 @@ document.querySelectorAll(".mode").forEach(b=>{
 startGame();
 
 document.addEventListener("keydown", e=>{
+  
+  // Enter để submit decode
+  if (GAME.mode === "decode" && e.key === "Enter") {
+    e.preventDefault();
+    decodeSubmit.onclick();
+    return;
+  }
+
 
   // / để focus decode
   if (GAME.mode === "decode" && e.key === "/") {
