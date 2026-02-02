@@ -54,21 +54,32 @@ body{
   font-size:26px;
   margin-bottom:20px;
   letter-spacing:3px;
+  min-height:32px; /* 👈 THÊM DÒNG NÀY */
 }
+
 
 #text{
   font-size:32px;
   min-height:50px;
 }
 
-input,button{
-  margin-top:5px; /* Đã giảm từ 20px xuống 5px theo yêu cầu */
-  padding:8px 14px;
+#decodeInput{
+  margin-top:8px;          /* gần morse hơn */
+  padding:10px 16px;
   font-size:18px;
   background:#2a2b2d;
-  border:none;
+  border:2px solid #2a2b2d;
+  border-radius:14px;      /* 👈 bo tròn */
   color:var(--fg);
+  outline:none;
+  width:420px;
+  text-align:center;
 }
+
+#decodeInput:focus{
+  border-color:var(--accent); /* viền tím khi gõ */
+}
+
 
 #result{
   margin-top:50px;
@@ -95,14 +106,16 @@ input,button{
 <div id="modes">
   <div class="mode active" data-mode="decode">decode</div>
   <div class="mode" data-mode="encode">encode</div>
-  <div class="mode" data-mode="practice">shitload learn a thing b#tch</div>
+  <div class="mode" data-mode="practice">practice</div>
 </div>
 
 <div id="game">
   <div id="morse"></div>
   <div id="text"></div>
 
-  <input id="decodeInput" style="display:none" placeholder="type here">
+  <input id="decodeInput" style="display:none"
+placeholder="">
+
   <button id="decodeSubmit" style="display:none">submit</button>
   <button id="restartBtn" style="display:none">restart</button>
 
@@ -125,6 +138,12 @@ const MORSE={
 const REVERSE = Object.fromEntries(
   Object.entries(MORSE).map(([k,v])=>[v,k])
 );
+
+const dotSound = new Audio("https://upload.wikimedia.org/wikipedia/commons/4/4f/Morse_code_dot.ogg");
+const dashSound = new Audio("https://upload.wikimedia.org/wikipedia/commons/b/b5/Morse_code_dash.ogg");
+
+dotSound.volume = 0.5;
+dashSound.volume = 0.5;
 
 let GAME={
   mode:"decode",
@@ -152,9 +171,10 @@ function startGame(){
    morse.textContent=toMorse(GAME.text);
    decodeInput.value="";
    decodeInput.style.display="inline-block";
-   // Không hiển thị các nút submit/restart ở đây nữa
+   decodeInput.focus(); // 👈 THÊM DÒNG NÀY
    GAME.startTime=Date.now();
  }
+
 
  if(GAME.mode==="encode"){
    GAME.text = randomText();
@@ -162,7 +182,10 @@ function startGame(){
    GAME.currentMorse = "";
 
    text.innerHTML = renderEncodeText();
+  
  }
+
+
 
  if(GAME.mode==="practice"){
    practiceInput.value="";
@@ -194,13 +217,6 @@ decodeInput.oninput=()=>{
    morse.textContent=toMorse(v);
  }
 };
-
-// Gán sự kiện Enter cho decodeInput
-decodeInput.addEventListener("keydown", (e) => {
-  if (GAME.mode === "decode" && e.key === "Enter") {
-    decodeSubmit.click();
-  }
-});
 
 practiceConvert.onclick=()=>{
  const v = practiceInput.value.trim().toUpperCase();
@@ -251,41 +267,63 @@ document.querySelectorAll(".mode").forEach(b=>{
 startGame();
 
 document.addEventListener("keydown", e=>{
-  // Xử lý tổ hợp Ctrl + R để Restart
+
+  // / để focus decode
+  if (GAME.mode === "decode" && e.key === "/") {
+    e.preventDefault();
+    decodeInput.focus();
+    return;
+  }
+
+  // Ctrl + R restart
   if (e.ctrlKey && e.key.toLowerCase() === 'r') {
     e.preventDefault();
     startGame();
     return;
   }
 
- if(GAME.mode!=="encode") return;
+  // encode only
+  if (GAME.mode !== "encode") return;
 
- if(e.key!=="." && e.key!=="-") return;
+  if (e.key !== "." && e.key !== "-") return;
 
- e.preventDefault();
+  e.preventDefault();
 
- GAME.currentMorse += e.key;
+  if (e.key === ".") {
+    dotSound.currentTime = 0;
+    dotSound.play();
+  }
+  if (e.key === "-") {
+    dashSound.currentTime = 0;
+    dashSound.play();
+  }
 
- const expected = MORSE[GAME.text[GAME.index]];
+  GAME.currentMorse += e.key;
+  morse.textContent = GAME.currentMorse;
 
- // sai prefix → reset morse hiện tại
- if(!expected.startsWith(GAME.currentMorse)){
-   GAME.currentMorse="";
-   return;
- }
+  const expected = MORSE[GAME.text[GAME.index]];
 
- // đúng trọn chữ
- if(GAME.currentMorse === expected){
-   GAME.index++;
-   GAME.currentMorse="";
+  if (!expected.startsWith(GAME.currentMorse)) {
+    GAME.currentMorse = "";
+    morse.textContent = "";
+    return;
+  }
 
-   if(GAME.index >= GAME.text.length){
-     showResult("100%");
-   }else{
-     text.innerHTML = renderEncodeText();
-   }
- }
+  if (GAME.currentMorse === expected) {
+    GAME.index++;
+    GAME.currentMorse = "";
+    morse.textContent = "";
+
+    if (GAME.index >= GAME.text.length) {
+      showResult("100%");
+    } else {
+      text.innerHTML = renderEncodeText();
+    }
+  }
 });
+
+
+morse.textContent = MORSE[GAME.text[0]];
 
 </script>
 </body>
