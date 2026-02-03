@@ -93,6 +93,94 @@ body{
   font-size:42px;
   color:var(--accent);
 }
+
+#header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:50px;
+}
+
+#modeBarWrap{
+  display:flex;
+  justify-content:center;
+  width:100%;          /* 👈 DÒNG QUAN TRỌNG */
+  margin-bottom:60px;
+}
+
+#header-actions{
+  display:flex;
+  gap:20px;
+  font-size:18px;
+  color:var(--sub);
+}
+
+.hicon{
+  cursor:pointer;
+  transition:.15s;
+  user-select:none;
+}
+
+.hicon:hover{
+  color:var(--fg);
+  transform:translateY(-1px);
+}
+
+#modeBar{
+  display:inline-flex;              /* 👈 QUAN TRỌNG */
+  align-items:center;
+  gap:18px;
+
+  background:#2a2b2d;
+  border-radius:14px;
+  padding:12px 18px;
+  margin:0;              /* 👈 căn giữa */
+
+  color:var(--sub);
+  font-size:14px;
+}
+
+.bar-section{
+  display:flex;
+  align-items:center;
+  gap:14px;
+}
+
+.bar-divider{
+  width:2px;
+  height:22px;
+  background:#3a3b3d;
+  border-radius:2px;
+}
+
+.bar-btn,
+.mode,
+.time{
+  cursor:pointer;
+  user-select:none;
+  transition:.15s;
+}
+
+.bar-btn.active{
+  color:#7ad07a;          /* xanh lá */
+}
+
+.bar-btn:hover,
+.mode:hover,
+.time:hover{
+  color:var(--fg);
+}
+
+.mode.active,
+.time.active{
+  color:var(--accent);
+}
+
+.mode.disabled{
+  opacity:.4;
+  cursor:default;
+}
+
 </style>
 </head>
 
@@ -101,13 +189,51 @@ body{
 
 <div id="header">
   <div id="logo"><span>mt</span> morseType</div>
+
+  <div id="header-actions">
+    <span class="hicon" title="Achievements">★</span>
+    <span class="hicon" id="btn-info" title="">ℹ</span>
+    <span class="hicon" id="btn-settings" title="">⚙</span>
+  </div>
 </div>
 
-<div id="modes">
-  <div class="mode active" data-mode="decode">decode</div>
-  <div class="mode" data-mode="encode">encode</div>
-  <div class="mode" data-mode="practice">practice</div>
+
+
+
+
+<div id="modeBarWrap">
+  <div id="modeBar">
+
+    <!-- LEFT -->
+    <div class="bar-section">
+      <span class="bar-btn" id="toggle-realism">@ realism</span>
+      <span class="bar-btn" id="toggle-numbers">$ numbers</span>
+    </div>
+
+    <div class="bar-divider"></div>
+
+    <!-- CENTER -->
+    <div class="bar-section">
+      <span class="mode active" data-mode="decode">decode</span>
+      <span class="mode" data-mode="encode">encode</span>
+      <span class="mode" data-mode="practice">practice</span>
+      <span class="mode disabled">translator</span>
+    </div>
+
+    <div class="bar-divider"></div>
+
+    <!-- RIGHT -->
+    <div class="bar-section">
+      <span class="time active" data-time="15">15s</span>
+      <span class="time" data-time="30">30s</span>
+      <span class="time" data-time="60">60s</span>
+      <span class="bar-btn">custom</span>
+    </div>
+
+  </div>
 </div>
+
+
 
 <div id="game">
   <div id="morse"></div>
@@ -129,12 +255,32 @@ placeholder="">
 </div>
 
 <script>
-const MORSE={
- A:".-",B:"-...",C:"-.-.",D:"-..",E:".",F:"..-.",G:"--.",H:"....",
- I:"..",J:".---",K:"-.-",L:".-..",M:"--",N:"-.",O:"---",
- P:".--.",Q:"--.-",R:".-.",S:"...",T:"-",
- U:"..-",V:"...-",W:".--",X:"-..-",Y:"-.--",Z:"--.."
+const MORSE = {
+  A:".-", B:"-...", C:"-.-.", D:"-..", E:".", F:"..-.", G:"--.", H:"....",
+  I:"..", J:".---", K:"-.-", L:".-..", M:"--", N:"-.", O:"---",
+  P:".--.", Q:"--.-", R:".-.", S:"...", T:"-",
+  U:"..-", V:"...-", W:".--", X:"-..-", Y:"-.--", Z:"--..",
+
+  0:"-----",
+  1:".----",
+  2:"..---",
+  3:"...--",
+  4:"....-",
+  5:".....",
+  6:"-....",
+  7:"--...",
+  8:"---..",
+  9:"----."
 };
+
+
+
+const REAL_WORDS = [
+  "HELLO","WORLD","MORSE","CODE","LEARN",
+  "SIGNAL","RADIO","TYPE","PRACTICE","SPEED",
+  "ALPHA","BRAVO","CHARLIE","DELTA","ECHO"
+];
+
 const REVERSE = Object.fromEntries(
   Object.entries(MORSE).map(([k,v])=>[v,k])
 );
@@ -154,6 +300,10 @@ let GAME={
   currentMorse:""   // morse đang gõ
 };
 
+let SETTINGS = {
+  realism: false,
+  numbers: false
+};
 
 function startGame(){
  morse.textContent="";
@@ -175,6 +325,16 @@ function startGame(){
    GAME.startTime=Date.now();
  }
 
+let GAME_TIME = 15;
+
+document.querySelectorAll(".time").forEach(t=>{
+  t.onclick=()=>{
+    document.querySelectorAll(".time").forEach(x=>x.classList.remove("active"));
+    t.classList.add("active");
+    GAME_TIME = +t.dataset.time;
+    startGame();
+  };
+});
 
  if(GAME.mode==="encode"){
    GAME.text = randomText();
@@ -195,9 +355,24 @@ function startGame(){
 }
 
 function randomText(){
- const c="ABCDEFGHIJKLMNOPQRSTUVWXYZ";
- return Array.from({length:8},()=>c[Math.floor(Math.random()*c.length)]).join("");
+  // realism → từ có nghĩa
+  if (SETTINGS.realism) {
+    let words = [];
+    while (words.join(" ").length < 20) {
+      words.push(REAL_WORDS[Math.floor(Math.random()*REAL_WORDS.length)]);
+    }
+    return words.join(" ").slice(0, 20).replace(/ /g,"");
+  }
+
+  let chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  if (SETTINGS.numbers) chars += "0123456789";
+
+  return Array.from(
+    {length:8},
+    ()=>chars[Math.floor(Math.random()*chars.length)]
+  ).join("");
 }
+
 
 function renderEncodeText(){
   return GAME.text.split("").map((c,i)=>{
@@ -213,7 +388,11 @@ function toMorse(str){
 
 decodeInput.oninput=()=>{
  if(GAME.mode==="encode"){
-   const v=decodeInput.value.toUpperCase().replace(/[^A-Z]/g,"");
+   const v=decodeInput.value
+    .toUpperCase()
+    .replace(SETTINGS.numbers ? /[^A-Z0-9]/g : /[^A-Z]/g, "");
+
+
    morse.textContent=toMorse(v);
  }
 };
@@ -331,8 +510,36 @@ document.addEventListener("keydown", e=>{
 });
 
 
-morse.textContent = MORSE[GAME.text[0]];
+
+document.getElementById("btn-info").onclick = () => {
+  alert("MorseType\nPractice Morse like Monkeytype.");
+};
+
+document.getElementById("btn-settings").onclick = () => {
+  alert("Settings – theme, sound, difficulty (todo)");
+};
+
+const btnRealism = document.getElementById("toggle-realism");
+const btnNumbers = document.getElementById("toggle-numbers");
+
+btnRealism.onclick = () => {
+  SETTINGS.realism = !SETTINGS.realism;
+  btnRealism.classList.toggle("active", SETTINGS.realism);
+  startGame();
+};
+
+btnNumbers.onclick = () => {
+  SETTINGS.numbers = !SETTINGS.numbers;
+  btnNumbers.classList.toggle("active", SETTINGS.numbers);
+  startGame();
+};
 
 </script>
 </body>
 </html>
+
+
+
+
+
+
