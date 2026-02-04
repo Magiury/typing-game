@@ -477,6 +477,92 @@ body{
   color:var(--sub);
   text-align:right;
 }
+#starPanel{
+  position:fixed;
+  top:90px;
+  right:80px;
+  width:460px;
+  height:420px;
+
+  background:#2a2b2d;
+  border:2px solid #3a3b3d;
+  border-radius:16px 16px 10px 10px;
+
+  display:none;
+  flex-direction:column;
+
+  z-index:9999;
+}
+
+#starHeader{
+  height:40px;
+  background:#242526;
+  border-bottom:1px solid #3a3b3d;
+
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+
+  padding:0 12px;
+  cursor:move;
+  user-select:none;
+}
+
+#starHeader span{
+  font-size:13px;
+  color:var(--sub);
+}
+
+#starHeader button{
+  background:none;
+  border:none;
+  color:var(--sub);
+  cursor:pointer;
+}
+
+#starHeader button:hover{
+  color:var(--fg);
+}
+
+#starBody{
+  flex:1;
+  padding:16px;
+  overflow:auto;
+
+  font-size:14px;
+  line-height:1.6;
+  color:var(--fg);
+
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+
+#starBody p{
+  margin:0;
+  color:var(--sub);
+}
+
+#morsePdfBtn{
+  margin-top:auto;
+  padding:12px 16px;
+
+  border:none;
+  border-radius:12px;
+  background:var(--accent);
+  color:#fff;
+
+  font-family:inherit;
+  font-size:14px;
+  cursor:pointer;
+  transition:.15s;
+}
+
+#morsePdfBtn:hover{
+  opacity:.9;
+  transform:translateY(-1px);
+}
+
 </style>
 </head>
 
@@ -552,6 +638,39 @@ placeholder="">
   </div>
   <div id="infoBody">
     <img src="internationalmorse.jpg" alt="Morse Chart">
+  </div>
+</div>
+
+<!-- STAR PANEL -->
+<div id="starPanel">
+  <div id="starHeader">
+    <span>History of Morse Code</span>
+    <button id="starClose">✕</button>
+  </div>
+
+  <div id="starBody">
+    <p>
+      Morse code was developed in the early 1830s by Samuel Morse and Alfred Vail
+      as a method of transmitting textual information over long distances using
+      electrical telegraph systems.
+    </p>
+
+    <p>
+      By encoding letters and numbers into sequences of short and long signals
+      (dots and dashes), Morse code allowed messages to travel faster than any
+      physical courier of its time. It became the backbone of global
+      communication throughout the 19th and early 20th centuries.
+    </p>
+
+    <p>
+      Even after being replaced by modern digital systems, Morse code remains
+      relevant today in aviation, amateur radio, and emergency communication —
+      valued for its simplicity, reliability, and efficiency.
+    </p>
+
+    <button id="morsePdfBtn">
+      Wanted to learn morse “professionally”?
+    </button>
   </div>
 </div>
 
@@ -895,6 +1014,26 @@ customInput.addEventListener("keydown", e=>{
   }
 });
 
+const starBtn   = document.querySelector(".hicon[title='Achievements']");
+const starPanel = document.getElementById("starPanel");
+const starClose = document.getElementById("starClose");
+
+document.getElementById("morsePdfBtn").onclick = () => {
+  window.open(
+    "https://raw.githubusercontent.com/USERNAME/REPO/main/morse-guide.pdf",
+    "_blank"
+  );
+};
+
+
+starBtn.onclick = () => {
+  starPanel.style.display = "flex";
+};
+
+starClose.onclick = () => {
+  starPanel.style.display = "none";
+};
+
 const infoBtn = document.getElementById("btn-info");
 const infoPanel = document.getElementById("infoPanel");
 const infoClose = document.getElementById("infoClose");
@@ -955,6 +1094,35 @@ document.addEventListener("mousedown", e => {
   if (nearEdge) {
     overlay.classList.remove("hidden");
   }
+});
+
+const starHeader = document.getElementById("starHeader");
+
+let isDraggingStar = false;
+let starOffsetX = 0;
+let starOffsetY = 0;
+
+starHeader.addEventListener("mousedown", e => {
+  isDraggingStar = true;
+
+  const rect = starPanel.getBoundingClientRect();
+  starOffsetX = e.clientX - rect.left;
+  starOffsetY = e.clientY - rect.top;
+
+  starPanel.style.left = rect.left + "px";
+  starPanel.style.top  = rect.top + "px";
+  starPanel.style.right = "auto";
+});
+
+document.addEventListener("mousemove", e => {
+  if (!isDraggingStar) return;
+
+  starPanel.style.left = e.clientX - starOffsetX + "px";
+  starPanel.style.top  = e.clientY - starOffsetY + "px";
+});
+
+document.addEventListener("mouseup", () => {
+  isDraggingStar = false;
 });
 
 const settingsHeader = document.getElementById("settingsHeader");
@@ -1411,7 +1579,3 @@ window.addEventListener("blur", () => {
 
 </body>
 </html>
-
-
-
-
