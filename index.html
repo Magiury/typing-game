@@ -278,7 +278,7 @@ body{
 
   background:#2a2b2d;
   border:2px solid #3a3b3d;
-  border-radius:16px;
+  border-radius:16px 16px 10px 10px;
 
   display:none;
   flex-direction:column;
@@ -412,6 +412,71 @@ body{
   color:var(--sub);
 }
 
+#settingsPanel{
+  position:fixed;
+  top:80px;
+  left:40px;
+
+  width:320px;
+  background:#2a2b2d;
+  border:2px solid #3a3b3d;
+  border-radius:16px 16px 10px 10px;
+
+  display:none;
+  flex-direction:column;
+  z-index:9999;
+}
+
+#settingsHeader{
+  height:40px;
+  background:#242526;
+  border-bottom:1px solid #3a3b3d;
+
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+
+  padding:0 12px;
+  cursor:move;
+}
+
+#settingsHeader span{
+  font-size:13px;
+  color:var(--sub);
+}
+
+#settingsHeader button{
+  background:none;
+  border:none;
+  color:var(--sub);
+  cursor:pointer;
+}
+
+#settingsHeader button:hover{
+  color:var(--fg);
+}
+
+#settingsBody{
+  padding:16px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+#settingsBody label{
+  font-size:13px;
+  color:var(--sub);
+}
+
+#volumeSlider{
+  width:100%;
+}
+
+#volumeValue{
+  font-size:13px;
+  color:var(--sub);
+  text-align:right;
+}
 </style>
 </head>
 
@@ -487,6 +552,20 @@ placeholder="">
   </div>
   <div id="infoBody">
     <img src="internationalmorse.jpg" alt="Morse Chart">
+  </div>
+</div>
+
+<!-- SETTINGS PANEL -->
+<div id="settingsPanel">
+  <div id="settingsHeader">
+    <span>Settings</span>
+    <button id="settingsClose">✕</button>
+  </div>
+
+  <div id="settingsBody">
+    <label>Master volume</label>
+    <input id="volumeSlider" type="range" min="0" max="100" value="80">
+    <div id="volumeValue">80%</div>
   </div>
 </div>
 
@@ -752,8 +831,16 @@ document.addEventListener("keydown", e=>{
  }
 });
 
-document.getElementById("btn-settings").onclick = () => {
-  alert("Settings – theme, sound, difficulty (todo)");
+const settingsBtn = document.getElementById("btn-settings");
+const settingsPanel = document.getElementById("settingsPanel");
+const settingsClose = document.getElementById("settingsClose");
+
+settingsBtn.onclick = () => {
+  settingsPanel.style.display = "flex";
+};
+
+settingsClose.onclick = () => {
+  settingsPanel.style.display = "none";
 };
 
 const btnRealism = document.getElementById("toggle-realism");
@@ -870,6 +957,34 @@ document.addEventListener("mousedown", e => {
   }
 });
 
+const settingsHeader = document.getElementById("settingsHeader");
+
+let isDraggingSettings = false;
+let settingsOffsetX = 0;
+let settingsOffsetY = 0;
+
+settingsHeader.addEventListener("mousedown", e => {
+  isDraggingSettings = true;
+
+  const rect = settingsPanel.getBoundingClientRect();
+  settingsOffsetX = e.clientX - rect.left;
+  settingsOffsetY = e.clientY - rect.top;
+
+  settingsPanel.style.left = rect.left + "px";
+  settingsPanel.style.top  = rect.top + "px";
+});
+
+document.addEventListener("mousemove", e => {
+  if (!isDraggingSettings) return;
+
+  settingsPanel.style.left = e.clientX - settingsOffsetX + "px";
+  settingsPanel.style.top  = e.clientY - settingsOffsetY + "px";
+});
+
+document.addEventListener("mouseup", () => {
+  isDraggingSettings = false;
+});
+
 document.querySelectorAll(".time").forEach(t=>{
   t.onclick = () => {
     document.querySelectorAll(".time").forEach(x=>{
@@ -884,6 +999,39 @@ document.querySelectorAll(".time").forEach(t=>{
 });
 
 /* =========================
+   CUSTOM PANEL DRAG
+   ========================= */
+
+const customHeader = document.getElementById("customHeader");
+
+let isDraggingCustom = false;
+let customOffsetX = 0;
+let customOffsetY = 0;
+
+customHeader.addEventListener("mousedown", e => {
+  isDraggingCustom = true;
+
+  const rect = customPanel.getBoundingClientRect();
+  customOffsetX = e.clientX - rect.left;
+  customOffsetY = e.clientY - rect.top;
+
+  customPanel.style.left = rect.left + "px";
+  customPanel.style.top  = rect.top + "px";
+  customPanel.style.right = "auto"; // 👈 QUAN TRỌNG
+});
+
+document.addEventListener("mousemove", e => {
+  if (!isDraggingCustom) return;
+
+  customPanel.style.left = e.clientX - customOffsetX + "px";
+  customPanel.style.top  = e.clientY - customOffsetY + "px";
+});
+
+document.addEventListener("mouseup", () => {
+  isDraggingCustom = false;
+});
+
+/* =========================
    LOW LATENCY MORSE SOUND
    ========================= */
 
@@ -893,11 +1041,25 @@ const audioCtx = new AudioCtx({
   sampleRate: 44100
 });
 
+const masterGain = audioCtx.createGain();
+masterGain.gain.value = 0.8; // 80%
+masterGain.connect(audioCtx.destination);
+
+const volumeSlider = document.getElementById("volumeSlider");
+const volumeValue  = document.getElementById("volumeValue");
+
+volumeSlider.oninput = () => {
+  const v = volumeSlider.value / 100;
+  masterGain.gain.value = v;
+  volumeValue.textContent = Math.round(v * 100) + "%";
+};
+
+
 function playBuffer(buffer) {
   if (!buffer) return;
   const src = audioCtx.createBufferSource();
   src.buffer = buffer;
-  src.connect(audioCtx.destination);
+  src.connect(masterGain);
   src.start(audioCtx.currentTime);
 }
 
@@ -1249,5 +1411,7 @@ window.addEventListener("blur", () => {
 
 </body>
 </html>
+
+
 
 
