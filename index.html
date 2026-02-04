@@ -368,6 +368,50 @@ body{
   animation: shake 0.25s;
 }
 
+/* =========================
+   GAME OVERLAY
+   ========================= */
+
+#gameOverlay{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.35);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  z-index:10000;
+  cursor:pointer;
+}
+
+#gameOverlay.hidden{
+  display:none;
+}
+
+.overlay-content{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:14px;
+
+  color:var(--fg);
+  opacity:.9;
+  user-select:none;
+}
+
+.overlay-icon{
+  font-size:38px;
+}
+
+.overlay-text{
+  font-size:15px;
+  letter-spacing:.5px;
+  color:var(--sub);
+}
+
 </style>
 </head>
 
@@ -457,6 +501,14 @@ placeholder="">
     <label>Characters</label>
     <input id="customInput" type="number" min="1" max="999" />
     <button id="customSubmit">Apply</button>
+  </div>
+</div>
+
+<!-- GAME OVERLAY -->
+<div id="gameOverlay">
+  <div class="overlay-content">
+    <div class="overlay-icon">🖱</div>
+    <div class="overlay-text">Press to return to practice</div>
   </div>
 </div>
 
@@ -774,22 +826,24 @@ let isDragging = false;
 let offsetX = 0;
 let offsetY = 0;
 
-infoHeader.addEventListener("mousedown", e=>{
-  isDragging = true;
-  offsetX = e.clientX - infoPanel.offsetLeft;
-  offsetY = e.clientY - infoPanel.offsetTop;
-});
+// chỉ trigger overlay khi click sát viền màn hình
+const EDGE = 20; // px
 
-document.addEventListener("mousemove", e=>{
-  if(!isDragging) return;
+document.addEventListener("mousedown", e => {
+  const x = e.clientX;
+  const y = e.clientY;
+  const w = window.innerWidth;
+  const h = window.innerHeight;
 
-  infoPanel.style.left = e.clientX - offsetX + "px";
-  infoPanel.style.top  = e.clientY - offsetY + "px";
-  infoPanel.style.right = "auto";
-});
+  const nearEdge =
+    x < EDGE ||
+    y < EDGE ||
+    x > w - EDGE ||
+    y > h - EDGE;
 
-document.addEventListener("mouseup", ()=>{
-  isDragging = false;
+  if (nearEdge) {
+    overlay.classList.remove("hidden");
+  }
 });
 
 document.querySelectorAll(".time").forEach(t=>{
@@ -1011,6 +1065,48 @@ function renderPracticeMorse(){
     })
     .join("");
 }
+
+</script>
+
+<script>
+/* =========================
+   GAME FOCUS OVERLAY LOGIC
+   ========================= */
+
+const overlay = document.getElementById("gameOverlay");
+const gameEl = document.getElementById("game");
+
+// bật overlay ngay khi load
+overlay.classList.remove("hidden");
+
+// click overlay → resume
+overlay.onclick = () => {
+  overlay.classList.add("hidden");
+  decodeInput?.focus();
+};
+
+// ESC để bật overlay (optional nhưng xịn)
+document.addEventListener("keydown", e=>{
+  if (e.key === "Escape") {
+    overlay.classList.remove("hidden");
+  }
+});
+
+/* =========================
+   TAB / WINDOW BLUR HANDLING
+   ========================= */
+
+// khi chuyển tab (Chrome, Firefox, Safari)
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    overlay.classList.remove("hidden");
+  }
+});
+
+// khi alt+tab / click ra app khác
+window.addEventListener("blur", () => {
+  overlay.classList.remove("hidden");
+});
 
 </script>
 
