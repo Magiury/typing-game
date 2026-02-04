@@ -626,14 +626,10 @@ document.querySelectorAll(".mode").forEach(b=>{
 startGame();
 
 document.addEventListener("keydown", e => {
-  if (e.key === ".") {
-    playDot();
-  }
-
-  if (e.key === "-") {
-    playDash();
-  }
-});
+  if (e.repeat) return;        // 👈 chống giữ phím
+  if (e.key === ".") playDot();
+  if (e.key === "-") playDash();
+}, true); // 👈 CAPTURE = chạy TRƯỚC mọi logic khác
 
 document.addEventListener("keydown", e=>{
   
@@ -814,7 +810,18 @@ document.querySelectorAll(".time").forEach(t=>{
    ========================= */
 
 const AudioCtx = window.AudioContext || window.webkitAudioContext;
-const audioCtx = new AudioCtx();
+const audioCtx = new AudioCtx({
+  latencyHint: "playback", // 👈 LOWEST LATENCY
+  sampleRate: 44100
+});
+
+function playBuffer(buffer) {
+  if (!buffer) return;
+  const src = audioCtx.createBufferSource();
+  src.buffer = buffer;
+  src.connect(audioCtx.destination);
+  src.start(audioCtx.currentTime);
+}
 
 let dotBuffer = null;
 let dashBuffer = null;
@@ -841,19 +848,11 @@ document.addEventListener("keydown", () => {
 }, { once: true });
 
 function playDot() {
-  if (!dotBuffer) return;
-  const src = audioCtx.createBufferSource();
-  src.buffer = dotBuffer;
-  src.connect(audioCtx.destination);
-  src.start();
+  playBuffer(dotBuffer);
 }
 
 function playDash() {
-  if (!dashBuffer) return;
-  const src = audioCtx.createBufferSource();
-  src.buffer = dashBuffer;
-  src.connect(audioCtx.destination);
-  src.start();
+  playBuffer(dashBuffer);
 }
 
 </script>
