@@ -640,13 +640,15 @@ startGame();
 
 document.addEventListener("keydown", e => {
   if (e.key === ".") {
-    dotSound.currentTime = 0;
-    dotSound.play();
+    const s = dotSound.cloneNode();
+    s.volume = dotSound.volume;
+    s.play();
   }
 
   if (e.key === "-") {
-    dashSound.currentTime = 0;
-    dashSound.play();
+    const s = dashSound.cloneNode();
+    s.volume = dashSound.volume;
+    s.play();
   }
 });
 
@@ -985,3 +987,6 @@ function renderPracticeMorse(){
 
 </body>
 </html>
+
+
+
