@@ -563,6 +563,49 @@ body{
   transform:translateY(-1px);
 }
 
+#fireworks{
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  z-index:99999;
+}
+
+/* =========================
+   SHORTCUT HINTS
+   ========================= */
+
+#shortcutHints{
+  position:fixed;
+  left:50%;
+  bottom:38px;
+  transform:translateX(-50%);
+
+  display:flex;
+  gap:18px;
+  align-items:center;
+
+  font-size:13px;
+  color:var(--sub);
+  opacity:.85;
+  user-select:none;
+  pointer-events:none; /* không block click */
+}
+
+.hint{
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+
+.key{
+  padding:3px 7px;
+  border-radius:6px;
+  background:#2a2b2d;
+  border:1px solid #3a3b3d;
+  font-size:12px;
+  color:var(--fg);
+}
+
 </style>
 </head>
 
@@ -579,9 +622,7 @@ body{
   </div>
 </div>
 
-
-
-
+<canvas id="fireworks"></canvas>
 
 <div id="modeBarWrap">
   <div id="modeBar">
@@ -626,6 +667,30 @@ placeholder="">
   <button id="restartBtn" style="display:none">restart</button>
 
   <div id="result"></div>
+</div>
+
+<div id="shortcutHints">
+  <div class="hint">
+    <span class="key">.</span>
+    <span>dot</span>
+  </div>
+  <div class="hint">
+    <span class="key">-</span>
+    <span>dash</span>
+  </div>
+  <div class="hint">
+    <span class="key">Enter</span>
+    <span>submit</span>
+  </div>
+  <div class="hint">
+    <span class="key">/</span>
+    <span>focus input</span>
+  </div>
+  <div class="hint">
+    <span class="key">Ctrl</span>+
+    <span class="key">R</span>
+    <span>restart</span>
+  </div>
 </div>
 
 </div>
@@ -876,6 +941,8 @@ function showResult(acc){
       time
     </div>
   `;
+
+  launchFireworks(); // 🎆 BOOM
 }
 
 document.querySelectorAll(".mode").forEach(b=>{
@@ -1601,11 +1668,98 @@ window.addEventListener("blur", () => {
 
 </script>
 
+<script>
+/* =========================
+   FIREWORKS ENGINE
+   ========================= */
+
+const fwCanvas = document.getElementById("fireworks");
+const fwCtx = fwCanvas.getContext("2d");
+
+let fwParticles = [];
+let fwRunning = false;
+
+function resizeFW(){
+  fwCanvas.width = window.innerWidth;
+  fwCanvas.height = window.innerHeight;
+}
+window.addEventListener("resize", resizeFW);
+resizeFW();
+
+function randomColor(){
+  const colors = [
+    "#ff5f6d", "#ffc371", "#47cf73",
+    "#38f9d7", "#4facfe", "#a18cd1"
+  ];
+  return colors[Math.floor(Math.random()*colors.length)];
+}
+
+function spawnFirework(x, y){
+  for(let i=0;i<80;i++){
+    fwParticles.push({
+      x, y,
+      vx: (Math.random()-0.5)*10,
+      vy: (Math.random()-0.5)*10,
+      life: 60,
+      color: randomColor()
+    });
+  }
+}
+
+function updateFW(){
+  fwCtx.clearRect(0,0,fwCanvas.width,fwCanvas.height);
+
+  fwParticles = fwParticles.filter(p=>p.life>0);
+
+  fwParticles.forEach(p=>{
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += 0.15;
+    p.life--;
+
+    fwCtx.globalAlpha = p.life/60;
+    fwCtx.fillStyle = p.color;
+    fwCtx.beginPath();
+    fwCtx.arc(p.x, p.y, 2.2, 0, Math.PI*2);
+    fwCtx.fill();
+  });
+
+  fwCtx.globalAlpha = 1;
+
+  if (fwParticles.length > 0) {
+    requestAnimationFrame(updateFW);
+  } else {
+    fwRunning = false;
+  }
+}
+
+function launchFireworks(){
+  if (fwRunning) return;
+  fwRunning = true;
+
+  const cx = window.innerWidth/2;
+  const cy = window.innerHeight/2 - 80;
+
+  let bursts = 0;
+  const interval = setInterval(()=>{
+    spawnFirework(
+      cx + (Math.random()-0.5)*200,
+      cy + (Math.random()-0.5)*120
+    );
+    bursts++;
+
+    if(bursts>=6){
+      clearInterval(interval);
+    }
+
+    if(!fwRunning){
+      updateFW();
+    }
+  }, 220);
+
+  updateFW();
+}
+</script>
+
 </body>
 </html>
-
-
-
-
-
-
