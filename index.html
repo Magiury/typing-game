@@ -320,6 +320,17 @@ placeholder="">
 
 </div>
 
+<!-- INFO PANEL -->
+<div id="infoPanel">
+  <div id="infoHeader">
+    <span>International Morse Code</span>
+    <button id="infoClose">✕</button>
+  </div>
+  <div id="infoBody">
+    <img src="internationalmorse.jpg" alt="Morse Chart">
+  </div>
+</div>
+
 <script>
 const MORSE = {
   A:".-", B:"-...", C:"-.-.", D:"-..", E:".", F:"..-.", G:"--.", H:"....",
@@ -577,9 +588,6 @@ document.addEventListener("keydown", e=>{
 
 
 
-document.getElementById("btn-info").onclick = () => {
-  alert("MorseType\nPractice Morse like Monkeytype.");
-};
 
 document.getElementById("btn-settings").onclick = () => {
   alert("Settings – theme, sound, difficulty (todo)");
@@ -637,18 +645,6 @@ document.addEventListener("mouseup", ()=>{
 });
 
 </script>
-
-<!-- INFO PANEL -->
-<div id="infoPanel">
-  <div id="infoHeader">
-    <span>International Morse Code</span>
-    <button id="infoClose">✕</button>
-  </div>
-  <div id="infoBody">
-    <img src="https://i.imgur.com/4M8bK7M.jpg" alt="Morse Chart">
-  </div>
-</div>
-
 </body>
 </html>
 
