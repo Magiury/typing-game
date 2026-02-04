@@ -270,6 +270,104 @@ body{
   100%{background-position:0% 50%}
 }
 
+#customPanel{
+  position:fixed;
+  top:120px;
+  right:40px;
+  width:300px;
+
+  background:#2a2b2d;
+  border:2px solid #3a3b3d;
+  border-radius:16px;
+
+  display:none;
+  flex-direction:column;
+  z-index:9999;
+}
+
+#customHeader{
+  height:40px;
+  background:#242526;
+  border-bottom:1px solid #3a3b3d;
+
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+
+  padding:0 12px;
+  cursor:move;
+  user-select:none;
+}
+
+#customHeader span{
+  font-size:13px;
+  color:var(--sub);
+}
+
+#customHeader button{
+  background:none;
+  border:none;
+  color:var(--sub);
+  cursor:pointer;
+}
+
+#customHeader button:hover{
+  color:var(--fg);
+}
+
+#customBody{
+  padding:16px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+#customBody label{
+  font-size:13px;
+  color:var(--sub);
+}
+
+#customInput{
+  padding:8px 10px;
+  font-size:16px;
+  background:#242526;
+  border:2px solid #3a3b3d;
+  border-radius:10px;
+  color:var(--fg);
+  outline:none;
+}
+
+#customInput:focus{
+  border-color:var(--accent);
+}
+
+#customSubmit{
+  margin-top:6px;
+  padding:8px;
+  background:#3a3b3d;
+  border:none;
+  border-radius:10px;
+  color:var(--fg);
+  cursor:pointer;
+}
+
+#customSubmit:hover{
+  background:#4a4b4d;
+}
+
+@keyframes shake {
+  0% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-6px); }
+  80% { transform: translateX(6px); }
+  100% { transform: translateX(0); }
+}
+
+.practice-shake {
+  animation: shake 0.25s;
+}
+
 </style>
 </head>
 
@@ -316,7 +414,7 @@ body{
       <span class="time active" data-count="15">15c</span>
       <span class="time" data-count="30">30c</span>
       <span class="time" data-count="60">60c</span>
-      <span class="bar-btn">custom</span>
+      <span class="bar-btn" id="btn-custom">custom</span>
     </div>
 
   </div>
@@ -332,10 +430,6 @@ placeholder="">
   <button id="decodeSubmit" style="display:none">submit</button>
   <button id="restartBtn" style="display:none">restart</button>
 
-  <input id="practiceInput" style="display:none"
-          placeholder="VD: SOS hoặc ... --- ...">
-  <button id="practiceConvert" style="display:none">convert</button>
-
   <div id="result"></div>
 </div>
 
@@ -349,6 +443,20 @@ placeholder="">
   </div>
   <div id="infoBody">
     <img src="internationalmorse.jpg" alt="Morse Chart">
+  </div>
+</div>
+
+<!-- CUSTOM COUNT PANEL -->
+<div id="customPanel">
+  <div id="customHeader">
+    <span>Custom character count</span>
+    <button id="customClose">✕</button>
+  </div>
+
+  <div id="customBody">
+    <label>Characters</label>
+    <input id="customInput" type="number" min="1" max="999" />
+    <button id="customSubmit">Apply</button>
   </div>
 </div>
 
@@ -413,8 +521,6 @@ function startGame(){
  decodeInput.style.display="none";
  decodeSubmit.style.display="none";
  restartBtn.style.display="none";
- practiceInput.style.display="none";
- practiceConvert.style.display="none";
 
  if(GAME.mode==="decode"){
    GAME.text=randomText();
@@ -433,14 +539,6 @@ function startGame(){
 
    text.innerHTML = renderEncodeText();
   
- }
-
-
-
- if(GAME.mode==="practice"){
-   practiceInput.value="";
-   practiceInput.style.display="inline-block";
-   practiceConvert.style.display="inline-block";
  }
 }
 
@@ -496,25 +594,6 @@ decodeInput.oninput=()=>{
  }
 };
 
-practiceConvert.onclick=()=>{
- const v = practiceInput.value.trim().toUpperCase();
- if(!v) return;
-
- // morse -> text
- if(v.includes(".") || v.includes("-")){
-   text.textContent = v
-     .split(" ")
-     .map(m=>REVERSE[m]||"?")
-     .join("");
-   morse.textContent = v;
- } 
- // text -> morse
- else{
-   text.textContent = v.replace(/[^A-Z]/g,"");
-   morse.textContent = toMorse(text.textContent);
- }
-};
-
 decodeSubmit.onclick=()=>{
  let correct=0;
  [...GAME.text].forEach((c,i)=>{
@@ -536,6 +615,8 @@ function showResult(acc){
 document.querySelectorAll(".mode").forEach(b=>{
   b.onclick=()=>{
     if (b.classList.contains("disabled")) return;
+
+    destroyPractice(); // 👈 👈 👈 KILL PRACTICE NGAY LẬP TỨC
 
     document.querySelectorAll(".mode").forEach(x=>{
       x.classList.remove("active","rainbow");
@@ -646,6 +727,43 @@ btnNumbers.onclick = () => {
   startGame();
 };
 
+const customBtn = document.getElementById("btn-custom");
+const customPanel = document.getElementById("customPanel");
+const customClose = document.getElementById("customClose");
+const customInput = document.getElementById("customInput");
+const customSubmit = document.getElementById("customSubmit");
+
+customBtn.onclick = () => {
+  customInput.value = CHAR_COUNT;
+  customPanel.style.display = "flex";
+  customInput.focus();
+};
+
+customClose.onclick = () => {
+  customPanel.style.display = "none";
+};
+
+customSubmit.onclick = () => {
+  const v = parseInt(customInput.value, 10);
+  if (!v || v <= 0) return;
+
+  CHAR_COUNT = v;
+
+  // bỏ active của 15c 30c 60c
+  document.querySelectorAll(".time").forEach(x=>{
+    x.classList.remove("active","rainbow");
+  });
+
+  customPanel.style.display = "none";
+  startGame();
+};
+
+customInput.addEventListener("keydown", e=>{
+  if (e.key === "Enter") {
+    customSubmit.onclick();
+  }
+});
+
 const infoBtn = document.getElementById("btn-info");
 const infoPanel = document.getElementById("infoPanel");
 const infoClose = document.getElementById("infoClose");
@@ -696,8 +814,169 @@ document.querySelectorAll(".time").forEach(t=>{
 });
 
 </script>
+
+<script>
+/* =========================
+   PRACTICE MODE PACKAGE
+   ========================= */
+
+const PRACTICE = {
+  active: false,
+  targetChar: "",
+  targetMorse: "",
+  input: "",
+  streak: 0,
+  timer: null,
+  timeLimit: 2000 // 2 giây
+};
+
+/* UI ELEMENTS */
+const practiceStartBtn = document.createElement("button");
+practiceStartBtn.textContent = "start";
+practiceStartBtn.style.marginTop = "16px";
+practiceStartBtn.style.padding = "8px 18px";
+practiceStartBtn.style.borderRadius = "12px";
+practiceStartBtn.style.border = "none";
+practiceStartBtn.style.cursor = "pointer";
+practiceStartBtn.style.background = "#3a3b3d";
+practiceStartBtn.style.color = "var(--fg)";
+practiceStartBtn.style.display = "none";
+
+const practiceStreakEl = document.createElement("div");
+practiceStreakEl.style.marginTop = "14px";
+practiceStreakEl.style.color = "var(--sub)";
+practiceStreakEl.textContent = "streak: 0";
+
+document.getElementById("game").appendChild(practiceStartBtn);
+document.getElementById("game").appendChild(practiceStreakEl);
+
+/* LOGIC */
+function practiceRandomChar(){
+  const chars = SETTINGS.numbers
+    ? "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    : "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  return chars[Math.floor(Math.random() * chars.length)];
+}
+
+function practiceNext(){
+  if (GAME.mode !== "practice") return;
+  clearTimeout(PRACTICE.timer);
+
+  PRACTICE.input = "";
+  PRACTICE.targetChar = practiceRandomChar();
+  PRACTICE.targetMorse = MORSE[PRACTICE.targetChar];
+
+  text.innerHTML = `<span class="rainbow">${PRACTICE.targetChar}</span>`;
+  morse.innerHTML = renderPracticeMorse();
+
+  PRACTICE.timer = setTimeout(() => {
+    practiceFail();
+  }, PRACTICE.timeLimit);
+}
+
+function practiceSuccess(){
+  if (GAME.mode !== "practice") return;
+  PRACTICE.streak++;
+  practiceStreakEl.textContent = `streak: ${PRACTICE.streak}`;
+  practiceNext();
+}
+
+function practiceFail(){
+  if (GAME.mode !== "practice") return;
+
+  const gameEl = document.getElementById("game");
+  gameEl.classList.add("practice-shake");
+
+  setTimeout(() => {
+    gameEl.classList.remove("practice-shake");
+  }, 250);
+
+  PRACTICE.streak = 0;
+  practiceStreakEl.textContent = `streak: 0`;
+  practiceNext();
+}
+
+/* START BUTTON */
+practiceStartBtn.onclick = () => {
+  PRACTICE.active = true;
+  PRACTICE.streak = 0;
+  practiceStreakEl.textContent = "streak: 0";
+  practiceNext();
+};
+
+/* KEY INPUT */
+document.addEventListener("keydown", e => {
+  if (!PRACTICE.active) return;
+  if (GAME.mode !== "practice") return;
+  if (e.key !== "." && e.key !== "-") return;
+
+  e.preventDefault();
+  PRACTICE.input += e.key;
+  morse.innerHTML = renderPracticeMorse();
+
+  if (!PRACTICE.targetMorse.startsWith(PRACTICE.input)) {
+    practiceFail();
+    return;
+  }
+
+  if (PRACTICE.input === PRACTICE.targetMorse) {
+    practiceSuccess();
+  }
+});
+
+/* HOOK VÀO startGame() */
+const __startGame = startGame;
+startGame = function(){
+  __startGame();
+
+  if (GAME.mode === "practice") {
+    PRACTICE.active = false;
+    morse.textContent = "";
+    text.textContent = "press start";
+    practiceStartBtn.style.display = "inline-block";
+    practiceStreakEl.style.display = "block";
+  } else {
+    PRACTICE.active = false;
+    practiceStartBtn.style.display = "none";
+    practiceStreakEl.style.display = "none";
+  }
+};
+
+function destroyPractice(){
+  PRACTICE.active = false;
+
+  if (PRACTICE.timer) {
+    clearTimeout(PRACTICE.timer);
+    PRACTICE.timer = null;
+  }
+
+  PRACTICE.input = "";
+  PRACTICE.targetChar = "";
+  PRACTICE.targetMorse = "";
+
+  practiceStartBtn.style.display = "none";
+  practiceStreakEl.style.display = "none";
+}
+
+function renderPracticeMorse(){
+  return PRACTICE.targetMorse
+    .split("")
+    .map((c, i) => {
+      if (i < PRACTICE.input.length) {
+        return `<span style="color:#7ad07a">${c}</span>`;
+      }
+      return `<span style="opacity:.5">${c}</span>`;
+    })
+    .join("");
+}
+
+</script>
+
 </body>
 </html>
+ 
+
+
 
 
 
