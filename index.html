@@ -181,6 +181,72 @@ body{
   cursor:default;
 }
 
+#infoPanel{
+  position:fixed;
+  top:80px;
+  right:40px;
+  width:420px;
+  height:360px;
+
+  background:#2a2b2d;
+  border:2px solid #3a3b3d;
+  border-radius:16px;
+
+  display:none;
+  flex-direction:column;
+
+  resize:both;
+  overflow:hidden;
+  z-index:9999;
+}
+
+/* HEADER (kéo panel) */
+#infoHeader{
+  height:40px;
+  background:#242526;
+  border-bottom:1px solid #3a3b3d;
+
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+
+  padding:0 12px;
+  cursor:move;
+  user-select:none;
+}
+
+#infoHeader span{
+  font-size:13px;
+  color:var(--sub);
+}
+
+#infoHeader button{
+  background:none;
+  border:none;
+  color:var(--sub);
+  font-size:14px;
+  cursor:pointer;
+}
+
+#infoHeader button:hover{
+  color:var(--fg);
+}
+
+/* BODY */
+#infoBody{
+  flex:1;
+  padding:12px;
+  overflow:auto;
+}
+
+#infoBody img{
+  width:100%;
+  height:auto;
+  border-radius:10px;
+  display:block;
+}
+
+
 </style>
 </head>
 
@@ -534,12 +600,56 @@ btnNumbers.onclick = () => {
   startGame();
 };
 
+const infoBtn = document.getElementById("btn-info");
+const infoPanel = document.getElementById("infoPanel");
+const infoClose = document.getElementById("infoClose");
+
+infoBtn.onclick = () => {
+  infoPanel.style.display = "flex";
+};
+
+infoClose.onclick = () => {
+  infoPanel.style.display = "none";
+};
+
+const infoHeader = document.getElementById("infoHeader");
+
+let isDragging = false;
+let offsetX = 0;
+let offsetY = 0;
+
+infoHeader.addEventListener("mousedown", e=>{
+  isDragging = true;
+  offsetX = e.clientX - infoPanel.offsetLeft;
+  offsetY = e.clientY - infoPanel.offsetTop;
+});
+
+document.addEventListener("mousemove", e=>{
+  if(!isDragging) return;
+
+  infoPanel.style.left = e.clientX - offsetX + "px";
+  infoPanel.style.top  = e.clientY - offsetY + "px";
+  infoPanel.style.right = "auto";
+});
+
+document.addEventListener("mouseup", ()=>{
+  isDragging = false;
+});
+
 </script>
+
+<!-- INFO PANEL -->
+<div id="infoPanel">
+  <div id="infoHeader">
+    <span>International Morse Code</span>
+    <button id="infoClose">✕</button>
+  </div>
+  <div id="infoBody">
+    <img src="https://i.imgur.com/4M8bK7M.jpg" alt="Morse Chart">
+  </div>
+</div>
+
 </body>
 </html>
-
-
-
-
 
 
