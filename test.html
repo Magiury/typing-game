@@ -1,0 +1,1880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>MorseType</title>
+
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg:#323437;
+  --fg:#d1d0c5;
+  --sub:#646669;
+  --accent:#a970ff;
+}
+
+*{box-sizing:border-box}
+
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--fg);
+  font-family:'JetBrains Mono', monospace;
+  display:flex;
+  justify-content:center;
+  min-height:100vh;
+}
+
+#app{
+  width:100%;
+  max-width:1200px;
+  padding:30px 40px;
+}
+
+#header{margin-bottom:40px}
+
+#logo{font-size:22px;font-weight:600}
+#logo span{color:var(--accent)}
+
+#modes{
+  display:flex;
+  justify-content:center;
+  gap:22px;
+  margin-bottom:60px;
+  color:var(--sub);
+}
+
+.mode{cursor:pointer}
+.mode.active{color:var(--accent)}
+
+#game{text-align:center}
+
+#morse{
+  font-size:26px;
+  margin-bottom:20px;
+  letter-spacing:3px;
+  min-height:32px; /* 👈 THÊM DÒNG NÀY */
+}
+
+
+#text{
+  font-size:32px;
+  min-height:50px;
+}
+
+#decodeInput{
+  margin-top:8px;          /* gần morse hơn */
+  padding:10px 16px;
+  font-size:18px;
+  background:#2a2b2d;
+  border:2px solid #2a2b2d;
+  border-radius:14px;      /* 👈 bo tròn */
+  color:var(--fg);
+  outline:none;
+  width:420px;
+  text-align:center;
+}
+
+#decodeInput:focus{
+  border-color:var(--accent); /* viền tím khi gõ */
+}
+
+
+#result{
+  margin-top:50px;
+  display:none;
+  gap:40px;
+  justify-content:center;
+  color:var(--sub);
+}
+
+.result-big{
+  font-size:42px;
+  color:var(--accent);
+}
+
+#header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:50px;
+}
+
+#modeBarWrap{
+  display:flex;
+  justify-content:center;
+  width:100%;          /* 👈 DÒNG QUAN TRỌNG */
+  margin-bottom:60px;
+}
+
+#header-actions{
+  display:flex;
+  gap:20px;
+  font-size:18px;
+  color:var(--sub);
+}
+
+.hicon{
+  cursor:pointer;
+  transition:.15s;
+  user-select:none;
+}
+
+.hicon:hover{
+  color:var(--fg);
+  transform:translateY(-1px);
+}
+
+#modeBar{
+  display:inline-flex;              /* 👈 QUAN TRỌNG */
+  align-items:center;
+  gap:18px;
+
+  background:#2a2b2d;
+  border-radius:14px;
+  padding:12px 18px;
+  margin:0;              /* 👈 căn giữa */
+
+  color:var(--sub);
+  font-size:14px;
+}
+
+.bar-section{
+  display:flex;
+  align-items:center;
+  gap:14px;
+}
+
+.bar-divider{
+  width:2px;
+  height:22px;
+  background:#3a3b3d;
+  border-radius:2px;
+}
+
+.bar-btn,
+.mode,
+.time{
+  cursor:pointer;
+  user-select:none;
+  transition:.15s;
+}
+
+.bar-btn.active{
+  color:#7ad07a;          /* xanh lá */
+}
+
+.bar-btn:hover,
+.mode:hover,
+.time:hover{
+  color:var(--fg);
+}
+
+.mode.active,
+.time.active{
+  color:inherit;
+}
+.time.active.rainbow{}
+
+.mode.disabled{
+  opacity:.4;
+  cursor:default;
+}
+
+#infoPanel{
+  position:fixed;
+  top:80px;
+  right:40px;
+  width:420px;
+  height:360px;
+
+  background:#2a2b2d;
+  border:2px solid #3a3b3d;
+  border-radius:16px;
+
+  display:none;
+  flex-direction:column;
+
+  resize:both;
+  overflow:hidden;
+  z-index:9999;
+}
+
+/* HEADER (kéo panel) */
+#infoHeader{
+  height:40px;
+  background:#242526;
+  border-bottom:1px solid #3a3b3d;
+
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+
+  padding:0 12px;
+  cursor:move;
+  user-select:none;
+}
+
+#infoHeader span{
+  font-size:13px;
+  color:var(--sub);
+}
+
+#infoHeader button{
+  background:none;
+  border:none;
+  color:var(--sub);
+  font-size:14px;
+  cursor:pointer;
+}
+
+#infoHeader button:hover{
+  color:var(--fg);
+}
+
+/* BODY */
+#infoBody{
+  flex:1;
+  padding:12px;
+  overflow:auto;
+}
+
+#infoBody img{
+  width:100%;
+  height:auto;
+  border-radius:10px;
+  display:block;
+}
+
+.rainbow{
+  background: linear-gradient(
+    90deg,
+    #ff5f6d,
+    #ffc371,
+    #47cf73,
+    #38f9d7,
+    #4facfe,
+    #a18cd1,
+    #f857a6
+  );
+  background-size: 300% 300%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: rainbowMove 4s ease infinite;
+}
+
+@keyframes rainbowMove{
+  0%{background-position:0% 50%}
+  50%{background-position:100% 50%}
+  100%{background-position:0% 50%}
+}
+
+#customPanel{
+  position:fixed;
+  top:120px;
+  right:40px;
+  width:300px;
+
+  background:#2a2b2d;
+  border:2px solid #3a3b3d;
+  border-radius:16px 16px 10px 10px;
+
+  display:none;
+  flex-direction:column;
+  z-index:9999;
+}
+
+#customHeader{
+  height:40px;
+  background:#242526;
+  border-bottom:1px solid #3a3b3d;
+
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+
+  padding:0 12px;
+  cursor:move;
+  user-select:none;
+}
+
+#customHeader span{
+  font-size:13px;
+  color:var(--sub);
+}
+
+#customHeader button{
+  background:none;
+  border:none;
+  color:var(--sub);
+  cursor:pointer;
+}
+
+#customHeader button:hover{
+  color:var(--fg);
+}
+
+#customBody{
+  padding:16px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+#customBody label{
+  font-size:13px;
+  color:var(--sub);
+}
+
+#customInput{
+  padding:8px 10px;
+  font-size:16px;
+  background:#242526;
+  border:2px solid #3a3b3d;
+  border-radius:10px;
+  color:var(--fg);
+  outline:none;
+}
+
+#customInput:focus{
+  border-color:var(--accent);
+}
+
+#customSubmit{
+  margin-top:6px;
+  padding:8px;
+  background:#3a3b3d;
+  border:none;
+  border-radius:10px;
+  color:var(--fg);
+  cursor:pointer;
+}
+
+#customSubmit:hover{
+  background:#4a4b4d;
+}
+
+@keyframes shake {
+  0% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-6px); }
+  80% { transform: translateX(6px); }
+  100% { transform: translateX(0); }
+}
+
+.practice-shake {
+  animation: shake 0.25s;
+}
+
+/* =========================
+   GAME OVERLAY
+   ========================= */
+
+#gameOverlay{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.35);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  z-index:10000;
+  cursor:pointer;
+}
+
+#gameOverlay.hidden{
+  display:none;
+}
+
+.overlay-content{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:14px;
+
+  color:var(--fg);
+  opacity:.9;
+  user-select:none;
+}
+
+.overlay-icon{
+  font-size:38px;
+}
+
+.overlay-text{
+  font-size:15px;
+  letter-spacing:.5px;
+  color:var(--sub);
+}
+
+#settingsPanel{
+  position:fixed;
+  top:80px;
+  left:40px;
+
+  width:320px;
+  background:#2a2b2d;
+  border:2px solid #3a3b3d;
+  border-radius:16px 16px 10px 10px;
+
+  display:none;
+  flex-direction:column;
+  z-index:9999;
+}
+
+#settingsHeader{
+  height:40px;
+  background:#242526;
+  border-bottom:1px solid #3a3b3d;
+
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+
+  padding:0 12px;
+  cursor:move;
+}
+
+#settingsHeader span{
+  font-size:13px;
+  color:var(--sub);
+}
+
+#settingsHeader button{
+  background:none;
+  border:none;
+  color:var(--sub);
+  cursor:pointer;
+}
+
+#settingsHeader button:hover{
+  color:var(--fg);
+}
+
+#settingsBody{
+  padding:16px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+#settingsBody label{
+  font-size:13px;
+  color:var(--sub);
+}
+
+#volumeSlider{
+  width:100%;
+}
+
+#volumeValue{
+  font-size:13px;
+  color:var(--sub);
+  text-align:right;
+}
+#starPanel{
+  position:fixed;
+  top:90px;
+  right:80px;
+  width:460px;
+  height:420px;
+
+  background:#2a2b2d;
+  border:2px solid #3a3b3d;
+  border-radius:16px 16px 10px 10px;
+
+  display:none;
+  flex-direction:column;
+
+  z-index:9999;
+}
+
+#starHeader{
+  height:40px;
+  background:#242526;
+  border-bottom:1px solid #3a3b3d;
+
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+
+  padding:0 12px;
+  cursor:move;
+  user-select:none;
+}
+
+#starHeader span{
+  font-size:13px;
+  color:var(--sub);
+}
+
+#starHeader button{
+  background:none;
+  border:none;
+  color:var(--sub);
+  cursor:pointer;
+}
+
+#starHeader button:hover{
+  color:var(--fg);
+}
+
+#starBody{
+  flex:1;
+  padding:16px;
+  overflow:auto;
+
+  font-size:14px;
+  line-height:1.6;
+  color:var(--fg);
+
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+
+#starBody p{
+  margin:0;
+  color:var(--sub);
+}
+
+#morsePdfBtn{
+  margin-top:auto;
+  padding:12px 16px;
+
+  border:none;
+  border-radius:12px;
+  background:var(--accent);
+  color:#fff;
+
+  font-family:inherit;
+  font-size:14px;
+  cursor:pointer;
+  transition:.15s;
+}
+
+#morsePdfBtn:hover{
+  opacity:.9;
+  transform:translateY(-1px);
+}
+
+#fireworks{
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  z-index:99999;
+}
+
+/* =========================
+   SHORTCUT HINTS
+   ========================= */
+
+#shortcutHints{
+  position:fixed;
+  left:50%;
+  bottom:38px;
+  transform:translateX(-50%);
+
+  display:flex;
+  gap:18px;
+  align-items:center;
+
+  font-size:13px;
+  color:var(--sub);
+  opacity:.85;
+  user-select:none;
+  pointer-events:none; /* không block click */
+}
+
+.hint{
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+
+.key{
+  padding:3px 7px;
+  border-radius:6px;
+  background:#2a2b2d;
+  border:1px solid #3a3b3d;
+  font-size:12px;
+  color:var(--fg);
+}
+/* =========================
+   AI VISUAL AGENT
+   ========================= */
+
+#aiVisualWrap{
+  display:none;
+  margin-top:18px;
+  gap:18px;
+  justify-content:center;
+}
+
+.aiVisualImg{
+  width:240px;
+  height:160px;
+  border-radius:14px;
+  object-fit:cover;
+  border:2px solid #3a3b3d;
+  background:#1f2022;
+}
+
+
+</style>
+</head>
+
+<body>
+<div id="app">
+
+<div id="header">
+  <div id="logo"><span class="rainbow">mt</span> morseType</div>
+
+  <div id="header-actions">
+    <span class="hicon" title="Achievements">★</span>
+    <span class="hicon" id="btn-info" title="">ℹ</span>
+    <span class="hicon" id="btn-settings" title="">⚙</span>
+  </div>
+</div>
+
+<canvas id="fireworks"></canvas>
+
+<div id="modeBarWrap">
+  <div id="modeBar">
+
+    <!-- LEFT -->
+    <div class="bar-section">
+      <span class="bar-btn" id="toggle-realism">@ realism</span>
+      <span class="bar-btn" id="toggle-numbers">$ numbers</span>
+    </div>
+
+    <div class="bar-divider"></div>
+
+    <!-- CENTER -->
+    <div class="bar-section">
+          <span class="mode active" data-mode="decode">decode</span>
+          <span class="mode" data-mode="encode">encode</span>
+          <span class="mode" data-mode="practice">practice</span>
+          <span class="mode" data-mode="translator">translator</span>
+    </div>
+
+    <div class="bar-divider"></div>
+
+    <!-- RIGHT -->
+    <div class="bar-section">
+      <span class="time active" data-count="15">15c</span>
+      <span class="time" data-count="30">30c</span>
+      <span class="time" data-count="60">60c</span>
+      <span class="bar-btn" id="btn-custom">custom</span>
+    </div>
+
+  </div>
+</div>
+
+<div id="game">
+  <div id="morse"></div>
+  <div id="text"></div>
+
+  <input id="decodeInput" style="display:none"
+placeholder="">
+
+  <button id="decodeSubmit" style="display:none">submit</button>
+  <button id="restartBtn" style="display:none">restart</button>
+
+  <div id="result"></div>
+</div>
+
+<div id="shortcutHints">
+  <div class="hint">
+    <span class="key">.</span>
+    <span>dot</span>
+  </div>
+  <div class="hint">
+    <span class="key">-</span>
+    <span>dash</span>
+  </div>
+  <div class="hint">
+    <span class="key">Enter</span>
+    <span>submit</span>
+  </div>
+  <div class="hint">
+    <span class="key">/</span>
+    <span>focus input</span>
+  </div>
+  <div class="hint">
+    <span class="key">Ctrl</span>+
+    <span class="key">R</span>
+    <span>restart</span>
+  </div>
+</div>
+
+</div>
+
+<!-- INFO PANEL -->
+<div id="infoPanel">
+  <div id="infoHeader">
+    <span>International Morse Code</span>
+    <button id="infoClose">✕</button>
+  </div>
+  <div id="infoBody">
+    <img src="internationalmorse.jpg" alt="Morse Chart">
+  </div>
+</div>
+
+<!-- STAR PANEL -->
+<div id="starPanel">
+  <div id="starHeader">
+    <span>History of Morse Code</span>
+    <button id="starClose">✕</button>
+  </div>
+
+  <div id="starBody">
+    <p>
+      Morse code was developed in the early 1830s by Samuel Morse and Alfred Vail
+      as a method of transmitting textual information over long distances using
+      electrical telegraph systems.
+    </p>
+
+    <p>
+      By encoding letters and numbers into sequences of short and long signals
+      (dots and dashes), Morse code allowed messages to travel faster than any
+      physical courier of its time. It became the backbone of global
+      communication throughout the 19th and early 20th centuries.
+    </p>
+
+    <p>
+      Even after being replaced by modern digital systems, Morse code remains
+      relevant today in aviation, amateur radio, and emergency communication —
+      valued for its simplicity, reliability, and efficiency.
+    </p>
+
+    <button id="morsePdfBtn">
+      Wanted to learn morse “professionally”?
+    </button>
+  </div>
+</div>
+
+<!-- SETTINGS PANEL -->
+<div id="settingsPanel">
+  <div id="settingsHeader">
+    <span>Settings</span>
+    <button id="settingsClose">✕</button>
+  </div>
+
+  <div id="settingsBody">
+    <label>Master volume</label>
+    <input id="volumeSlider" type="range" min="0" max="100" value="80">
+    <div id="volumeValue">80%</div>
+  </div>
+</div>
+
+<!-- CUSTOM COUNT PANEL -->
+<div id="customPanel">
+  <div id="customHeader">
+    <span>Custom character count</span>
+    <button id="customClose">✕</button>
+  </div>
+
+  <div id="customBody">
+    <label>Characters</label>
+    <input id="customInput" type="number" min="1" max="999" />
+    <button id="customSubmit">Apply</button>
+  </div>
+</div>
+
+<!-- GAME OVERLAY -->
+<div id="gameOverlay">
+  <div class="overlay-content">
+    <div class="overlay-icon">🖱</div>
+    <div class="overlay-text">Press to return to practice</div>
+  </div>
+</div>
+
+<script>
+const MORSE = {
+  A:".-", B:"-...", C:"-.-.", D:"-..", E:".", F:"..-.", G:"--.", H:"....",
+  I:"..", J:".---", K:"-.-", L:".-..", M:"--", N:"-.", O:"---",
+  P:".--.", Q:"--.-", R:".-.", S:"...", T:"-",
+  U:"..-", V:"...-", W:".--", X:"-..-", Y:"-.--", Z:"--..",
+
+  0:"-----",
+  1:".----",
+  2:"..---",
+  3:"...--",
+  4:"....-",
+  5:".....",
+  6:"-....",
+  7:"--...",
+  8:"---..",
+  9:"----."
+};
+
+
+
+const REAL_WORDS = [
+  "HELLO","WORLD","MORSE","CODE","LEARN",
+  "SIGNAL","RADIO","TYPE","PRACTICE","SPEED",
+  "ALPHA","BRAVO","CHARLIE","DELTA","ECHO"
+];
+
+const REVERSE = Object.fromEntries(
+  Object.entries(MORSE).map(([k,v])=>[v,k])
+);
+
+
+let GAME={
+  mode:"decode",
+  text:"",
+  startTime:0,
+
+  index:0,          // chữ hiện tại
+  currentMorse:""   // morse đang gõ
+};
+
+let CHAR_COUNT = 15;
+
+let SETTINGS = {
+  realism: false,
+  numbers: false
+};
+
+function startGame(){
+ GAME.startTime = 0;
+
+ morse.textContent="";
+ text.textContent="";
+ result.style.display="none";
+
+ decodeInput.style.display="none";
+ decodeSubmit.style.display="none";
+ restartBtn.style.display="none";
+
+ if(GAME.mode==="decode"){
+   GAME.text=randomText();
+   morse.textContent=toMorse(GAME.text);
+   decodeInput.value="";
+   decodeInput.style.display="inline-block";
+   decodeInput.focus();
+ }
+
+
+ if(GAME.mode==="encode"){
+   GAME.text = randomText();
+   GAME.index = 0;
+   GAME.currentMorse = "";
+
+   text.innerHTML = renderEncodeText();
+  
+ }
+}
+
+function randomText(){
+  // REALISTIC MODE
+  if (SETTINGS.realism) {
+    let parts = [];
+
+    while (parts.join(" ").length < CHAR_COUNT) {
+      let w = REAL_WORDS[Math.floor(Math.random() * REAL_WORDS.length)];
+      if (SETTINGS.numbers && Math.random() < 0.3) {
+        w += Math.floor(Math.random() * 10);
+      }
+      parts.push(w);
+    }
+
+    return parts.join(" ").slice(0, CHAR_COUNT);
+  }
+
+  // NON-REALISTIC MODE
+  let chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  if (SETTINGS.numbers) chars += "0123456789";
+
+  return Array.from(
+    { length: CHAR_COUNT },
+    () => chars[Math.floor(Math.random() * chars.length)]
+  ).join("");
+}
+
+
+
+
+function renderEncodeText(){
+  return GAME.text.split("").map((c,i)=>{
+    if(i < GAME.index) return `<span style="color:#7ad07a">${c}</span>`;
+    if(i === GAME.index) return `<span class="rainbow">${c}</span>`;
+    return `<span style="opacity:.4">${c}</span>`;
+  }).join("");
+}
+
+function toMorse(str){
+ return str.split("").map(c=>MORSE[c]||"").join(" ");
+}
+
+decodeInput.oninput=()=>{
+  // START TIME — decode
+  if (GAME.mode === "decode" && GAME.startTime === 0) {
+    GAME.startTime = Date.now();
+  }
+
+  if(GAME.mode==="encode"){
+   const v=decodeInput.value
+    .toUpperCase()
+    .replace(SETTINGS.numbers ? /[^A-Z0-9]/g : /[^A-Z]/g, "");
+
+
+   morse.textContent=toMorse(v);
+ }
+};
+
+decodeSubmit.onclick=()=>{
+ let correct=0;
+ [...GAME.text].forEach((c,i)=>{
+   if(decodeInput.value.toUpperCase()[i]===c) correct++;
+ });
+ showResult(Math.round(correct/GAME.text.length*100)+"%");
+};
+
+restartBtn.onclick=startGame;
+
+function showResult(acc){
+  const elapsedMs = Date.now() - GAME.startTime;
+  const seconds = (elapsedMs / 1000).toFixed(2);
+
+  result.style.display="flex";
+  result.innerHTML=`
+    <div>
+      <div class="result-big">${GAME.text.length}</div>
+      chars
+    </div>
+
+    <div>
+      <div class="result-big">${acc}</div>
+      accuracy
+    </div>
+
+    <div>
+      <div class="result-big">${seconds}s</div>
+      time
+    </div>
+  `;
+
+  launchFireworks(); // 🎆 BOOM
+}
+
+document.querySelectorAll(".mode").forEach(b=>{
+  b.onclick=()=>{
+    if (b.classList.contains("disabled")) return;
+
+    destroyPractice(); // 👈 👈 👈 KILL PRACTICE NGAY LẬP TỨC
+
+    document.querySelectorAll(".mode").forEach(x=>{
+      x.classList.remove("active","rainbow");
+    });
+
+    b.classList.add("active","rainbow");
+    GAME.mode = b.dataset.mode;
+    startGame();
+  };
+});
+
+startGame();
+
+document.addEventListener("keydown", e => {
+  if (e.repeat) return;        // 👈 chống giữ phím
+  if (e.key === ".") playDot();
+  if (e.key === "-") playDash();
+}, true); // 👈 CAPTURE = chạy TRƯỚC mọi logic khác
+
+document.addEventListener("keydown", e=>{
+  
+  // Enter để submit decode
+  if (GAME.mode === "decode" && e.key === "Enter") {
+    e.preventDefault();
+    decodeSubmit.onclick();
+    return;
+  }
+
+
+  // / để focus decode
+  if (GAME.mode === "decode" && e.key === "/") {
+    e.preventDefault();
+    decodeInput.focus();
+    return;
+  }
+
+  // Ctrl + R restart
+  if (e.ctrlKey && e.key.toLowerCase() === 'r') {
+    e.preventDefault();
+    startGame();
+    return;
+  }
+
+// encode only
+ if (GAME.mode !== "encode") return;
+
+ if (e.key !== "." && e.key !== "-") return;
+ if (GAME.startTime === 0) {
+   GAME.startTime = Date.now();
+ }
+
+ e.preventDefault();
+
+// ✅ SKIP SPACE TỰ ĐỘNG
+ while (GAME.text[GAME.index] === " ") {
+  GAME.index++;
+   GAME.currentMorse = "";
+   morse.textContent = "";
+   text.innerHTML = renderEncodeText();
+ }
+
+// nếu đã encode xong
+ if (GAME.index >= GAME.text.length) {
+   showResult("100%");
+   return;
+ }
+
+ GAME.currentMorse += e.key;
+ morse.textContent = GAME.currentMorse;
+
+ const expected = MORSE[GAME.text[GAME.index]];
+
+ if (!expected || !expected.startsWith(GAME.currentMorse)) {
+   GAME.currentMorse = "";
+   morse.textContent = "";
+   return;
+ }
+
+ if (GAME.currentMorse === expected) {
+   GAME.index++;
+   GAME.currentMorse = "";
+   morse.textContent = "";
+
+   if (GAME.index >= GAME.text.length) {
+     showResult("100%");
+   } else {
+     text.innerHTML = renderEncodeText();
+   }
+ }
+});
+
+const settingsBtn = document.getElementById("btn-settings");
+const settingsPanel = document.getElementById("settingsPanel");
+const settingsClose = document.getElementById("settingsClose");
+
+settingsBtn.onclick = () => {
+  settingsPanel.style.display = "flex";
+};
+
+settingsClose.onclick = () => {
+  settingsPanel.style.display = "none";
+};
+
+const btnRealism = document.getElementById("toggle-realism");
+const btnNumbers = document.getElementById("toggle-numbers");
+
+btnRealism.onclick = () => {
+  SETTINGS.realism = !SETTINGS.realism;
+  btnRealism.classList.toggle("active", SETTINGS.realism);
+  startGame();
+};
+
+btnNumbers.onclick = () => {
+  SETTINGS.numbers = !SETTINGS.numbers;
+  btnNumbers.classList.toggle("active", SETTINGS.numbers);
+  startGame();
+};
+
+const customBtn = document.getElementById("btn-custom");
+const customPanel = document.getElementById("customPanel");
+const customClose = document.getElementById("customClose");
+const customInput = document.getElementById("customInput");
+const customSubmit = document.getElementById("customSubmit");
+
+customBtn.onclick = () => {
+  customInput.value = CHAR_COUNT;
+  customPanel.style.display = "flex";
+  customInput.focus();
+};
+
+customClose.onclick = () => {
+  customPanel.style.display = "none";
+};
+
+customSubmit.onclick = () => {
+  const v = parseInt(customInput.value, 10);
+  if (!v || v <= 0) return;
+
+  CHAR_COUNT = v;
+
+  // bỏ active của 15c 30c 60c
+  document.querySelectorAll(".time").forEach(x=>{
+    x.classList.remove("active","rainbow");
+  });
+
+  customPanel.style.display = "none";
+  startGame();
+};
+
+customInput.addEventListener("keydown", e=>{
+  if (e.key === "Enter") {
+    customSubmit.onclick();
+  }
+});
+
+const starBtn   = document.querySelector(".hicon[title='Achievements']");
+const starPanel = document.getElementById("starPanel");
+const starClose = document.getElementById("starClose");
+
+document.getElementById("morsePdfBtn").onclick = () => {
+  window.open(
+    "https://raw.githubusercontent.com/USERNAME/REPO/main/morse-guide.pdf",
+    "_blank"
+  );
+};
+
+
+starBtn.onclick = () => {
+  starPanel.style.display = "flex";
+};
+
+starClose.onclick = () => {
+  starPanel.style.display = "none";
+};
+
+const infoBtn = document.getElementById("btn-info");
+const infoPanel = document.getElementById("infoPanel");
+const infoClose = document.getElementById("infoClose");
+
+infoBtn.onclick = () => {
+  infoPanel.style.display = "flex";
+};
+
+infoClose.onclick = () => {
+  infoPanel.style.display = "none";
+};
+
+/* =========================
+   INFO PANEL DRAG
+   ========================= */
+
+const infoHeader = document.getElementById("infoHeader");
+
+let isDraggingInfo = false;
+let infoOffsetX = 0;
+let infoOffsetY = 0;
+
+infoHeader.addEventListener("mousedown", e => {
+  isDraggingInfo = true;
+
+  const rect = infoPanel.getBoundingClientRect();
+  infoOffsetX = e.clientX - rect.left;
+  infoOffsetY = e.clientY - rect.top;
+
+  infoPanel.style.left = rect.left + "px";
+  infoPanel.style.top  = rect.top + "px";
+  infoPanel.style.right = "auto"; // 🔴 BẮT BUỘC
+});
+
+document.addEventListener("mousemove", e => {
+  if (!isDraggingInfo) return;
+
+  infoPanel.style.left = e.clientX - infoOffsetX + "px";
+  infoPanel.style.top  = e.clientY - infoOffsetY + "px";
+});
+
+document.addEventListener("mouseup", () => {
+  isDraggingInfo = false;
+});
+
+document.addEventListener("mousedown", e => {
+  const x = e.clientX;
+  const y = e.clientY;
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+
+  const nearEdge =
+    x < EDGE ||
+    y < EDGE ||
+    x > w - EDGE ||
+    y > h - EDGE;
+
+  if (nearEdge) {
+    overlay.classList.remove("hidden");
+  }
+});
+
+const starHeader = document.getElementById("starHeader");
+
+let isDraggingStar = false;
+let starOffsetX = 0;
+let starOffsetY = 0;
+
+starHeader.addEventListener("mousedown", e => {
+  isDraggingStar = true;
+
+  const rect = starPanel.getBoundingClientRect();
+  starOffsetX = e.clientX - rect.left;
+  starOffsetY = e.clientY - rect.top;
+
+  starPanel.style.left = rect.left + "px";
+  starPanel.style.top  = rect.top + "px";
+  starPanel.style.right = "auto";
+});
+
+document.addEventListener("mousemove", e => {
+  if (!isDraggingStar) return;
+
+  starPanel.style.left = e.clientX - starOffsetX + "px";
+  starPanel.style.top  = e.clientY - starOffsetY + "px";
+});
+
+document.addEventListener("mouseup", () => {
+  isDraggingStar = false;
+});
+
+const settingsHeader = document.getElementById("settingsHeader");
+
+let isDraggingSettings = false;
+let settingsOffsetX = 0;
+let settingsOffsetY = 0;
+
+settingsHeader.addEventListener("mousedown", e => {
+  isDraggingSettings = true;
+
+  const rect = settingsPanel.getBoundingClientRect();
+  settingsOffsetX = e.clientX - rect.left;
+  settingsOffsetY = e.clientY - rect.top;
+
+  settingsPanel.style.left = rect.left + "px";
+  settingsPanel.style.top  = rect.top + "px";
+});
+
+document.addEventListener("mousemove", e => {
+  if (!isDraggingSettings) return;
+
+  settingsPanel.style.left = e.clientX - settingsOffsetX + "px";
+  settingsPanel.style.top  = e.clientY - settingsOffsetY + "px";
+});
+
+document.addEventListener("mouseup", () => {
+  isDraggingSettings = false;
+});
+
+document.querySelectorAll(".time").forEach(t=>{
+  t.onclick = () => {
+    document.querySelectorAll(".time").forEach(x=>{
+      x.classList.remove("active","rainbow");
+    });
+
+    t.classList.add("active","rainbow");
+    CHAR_COUNT = +t.dataset.count;
+
+    startGame();
+  };
+});
+
+/* =========================
+   CUSTOM PANEL DRAG
+   ========================= */
+
+const customHeader = document.getElementById("customHeader");
+
+let isDraggingCustom = false;
+let customOffsetX = 0;
+let customOffsetY = 0;
+
+customHeader.addEventListener("mousedown", e => {
+  isDraggingCustom = true;
+
+  const rect = customPanel.getBoundingClientRect();
+  customOffsetX = e.clientX - rect.left;
+  customOffsetY = e.clientY - rect.top;
+
+  customPanel.style.left = rect.left + "px";
+  customPanel.style.top  = rect.top + "px";
+  customPanel.style.right = "auto"; // 👈 QUAN TRỌNG
+});
+
+document.addEventListener("mousemove", e => {
+  if (!isDraggingCustom) return;
+
+  customPanel.style.left = e.clientX - customOffsetX + "px";
+  customPanel.style.top  = e.clientY - customOffsetY + "px";
+});
+
+document.addEventListener("mouseup", () => {
+  isDraggingCustom = false;
+});
+
+/* =========================
+   LOW LATENCY MORSE SOUND
+   ========================= */
+
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+const audioCtx = new AudioCtx({
+  latencyHint: "playback", // 👈 LOWEST LATENCY
+  sampleRate: 44100
+});
+
+const masterGain = audioCtx.createGain();
+masterGain.gain.value = 0.8; // 80%
+masterGain.connect(audioCtx.destination);
+
+const volumeSlider = document.getElementById("volumeSlider");
+const volumeValue  = document.getElementById("volumeValue");
+
+volumeSlider.oninput = () => {
+  const v = volumeSlider.value / 100;
+  masterGain.gain.value = v;
+  volumeValue.textContent = Math.round(v * 100) + "%";
+};
+
+
+function playBuffer(buffer) {
+  if (!buffer) return;
+  const src = audioCtx.createBufferSource();
+  src.buffer = buffer;
+  src.connect(masterGain);
+  src.start(audioCtx.currentTime);
+}
+
+let dotBuffer = null;
+let dashBuffer = null;
+
+async function loadSound(url) {
+  const res = await fetch(url);
+  const arr = await res.arrayBuffer();
+  return await audioCtx.decodeAudioData(arr);
+}
+
+async function initSounds() {
+  dotBuffer = await loadSound("dot.MP3");
+  dashBuffer = await loadSound("dash.MP3");
+}
+
+// gọi sớm
+initSounds();
+
+// unlock audio (Chrome policy)
+document.addEventListener("keydown", () => {
+  if (audioCtx.state === "suspended") {
+    audioCtx.resume();
+  }
+}, { once: true });
+
+function playDot() {
+  playBuffer(dotBuffer);
+}
+
+function playDash() {
+  playBuffer(dashBuffer);
+}
+
+</script>
+
+<script>
+/* =========================
+   PRACTICE MODE PACKAGE
+   ========================= */
+
+const PRACTICE = {
+  active: false,
+  targetChar: "",
+  targetMorse: "",
+  input: "",
+  streak: 0,
+  timer: null,
+  timeLimit: 2000 // 2 giây
+};
+
+/* UI ELEMENTS */
+const practiceStartBtn = document.createElement("button");
+practiceStartBtn.textContent = "start";
+practiceStartBtn.style.marginTop = "16px";
+practiceStartBtn.style.padding = "8px 18px";
+practiceStartBtn.style.borderRadius = "12px";
+practiceStartBtn.style.border = "none";
+practiceStartBtn.style.cursor = "pointer";
+practiceStartBtn.style.background = "#3a3b3d";
+practiceStartBtn.style.color = "var(--fg)";
+practiceStartBtn.style.display = "none";
+
+const practiceStreakEl = document.createElement("div");
+practiceStreakEl.style.marginTop = "14px";
+practiceStreakEl.style.color = "var(--sub)";
+practiceStreakEl.textContent = "streak: 0";
+
+document.getElementById("game").appendChild(practiceStartBtn);
+document.getElementById("game").appendChild(practiceStreakEl);
+
+/* LOGIC */
+function practiceRandomChar(){
+  const chars = SETTINGS.numbers
+    ? "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    : "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  return chars[Math.floor(Math.random() * chars.length)];
+}
+
+function practiceNext(){
+  if (GAME.mode !== "practice") return;
+  clearTimeout(PRACTICE.timer);
+
+  PRACTICE.input = "";
+  PRACTICE.targetChar = practiceRandomChar();
+  PRACTICE.targetMorse = MORSE[PRACTICE.targetChar];
+
+  text.innerHTML = `<span class="rainbow">${PRACTICE.targetChar}</span>`;
+  morse.innerHTML = renderPracticeMorse();
+
+  PRACTICE.timer = setTimeout(() => {
+    practiceFail();
+  }, PRACTICE.timeLimit);
+}
+
+function practiceSuccess(){
+  if (GAME.mode !== "practice") return;
+  PRACTICE.streak++;
+  practiceStreakEl.textContent = `streak: ${PRACTICE.streak}`;
+  practiceNext();
+}
+
+function practiceFail(){
+  if (GAME.mode !== "practice") return;
+
+  const gameEl = document.getElementById("game");
+  gameEl.classList.add("practice-shake");
+
+  setTimeout(() => {
+    gameEl.classList.remove("practice-shake");
+  }, 250);
+
+  PRACTICE.streak = 0;
+  practiceStreakEl.textContent = `streak: 0`;
+  practiceNext();
+}
+
+/* START BUTTON */
+practiceStartBtn.onclick = () => {
+  PRACTICE.active = true;
+  PRACTICE.streak = 0;
+  practiceStreakEl.textContent = "streak: 0";
+  practiceNext();
+};
+
+/* KEY INPUT */
+document.addEventListener("keydown", e => {
+  if (!PRACTICE.active) return;
+  if (GAME.mode !== "practice") return;
+  if (e.key !== "." && e.key !== "-") return;
+
+  e.preventDefault();
+  PRACTICE.input += e.key;
+  morse.innerHTML = renderPracticeMorse();
+
+  if (!PRACTICE.targetMorse.startsWith(PRACTICE.input)) {
+    practiceFail();
+    return;
+  }
+
+  if (PRACTICE.input === PRACTICE.targetMorse) {
+    practiceSuccess();
+  }
+});
+
+/* HOOK VÀO startGame() */
+const __startGame = startGame;
+startGame = function(){
+  __startGame();
+
+  if (GAME.mode === "practice") {
+    PRACTICE.active = false;
+    morse.textContent = "";
+    text.textContent = "press start";
+    practiceStartBtn.style.display = "inline-block";
+    practiceStreakEl.style.display = "block";
+  } else {
+    PRACTICE.active = false;
+    practiceStartBtn.style.display = "none";
+    practiceStreakEl.style.display = "none";
+  }
+};
+
+function destroyPractice(){
+  PRACTICE.active = false;
+
+  if (PRACTICE.timer) {
+    clearTimeout(PRACTICE.timer);
+    PRACTICE.timer = null;
+  }
+
+  PRACTICE.input = "";
+  PRACTICE.targetChar = "";
+  PRACTICE.targetMorse = "";
+
+  practiceStartBtn.style.display = "none";
+  practiceStreakEl.style.display = "none";
+}
+
+function renderPracticeMorse(){
+  return PRACTICE.targetMorse
+    .split("")
+    .map((c, i) => {
+      if (i < PRACTICE.input.length) {
+        return `<span style="color:#7ad07a">${c}</span>`;
+      }
+      return `<span style="opacity:.5">${c}</span>`;
+    })
+    .join("");
+}
+
+</script>
+
+<script>
+/* =========================
+   TRANSLATOR MODE PACKAGE
+   ========================= */
+
+const translatorWrap = document.createElement("div");
+translatorWrap.style.display = "none";
+translatorWrap.style.justifyContent = "center";
+translatorWrap.style.alignItems = "center";
+translatorWrap.style.gap = "18px";
+translatorWrap.style.position = "relative";
+translatorWrap.style.top = "-100px";
+
+/* MORSE INPUT */
+const morseBox = document.createElement("textarea");
+morseBox.placeholder = "morse code";
+styleBox(morseBox);
+
+/* ARROW */
+const arrow = document.createElement("div");
+arrow.innerHTML = "⇄";
+arrow.style.fontSize = "26px";
+arrow.style.color = "var(--sub)";
+arrow.style.userSelect = "none";
+
+/* TEXT INPUT */
+const textBox = document.createElement("textarea");
+textBox.placeholder = "text";
+styleBox(textBox);
+
+/* APPEND */
+translatorWrap.appendChild(morseBox);
+translatorWrap.appendChild(arrow);
+translatorWrap.appendChild(textBox);
+document.getElementById("game").appendChild(translatorWrap);
+<!-- =========================
+     AI VISUAL AGENT UI
+     ========================= -->
+<div id="aiVisualWrap">
+  <img class="aiVisualImg">
+  <img class="aiVisualImg">
+</div>
+
+
+/* =========================
+   STYLE HELPER
+   ========================= */
+function styleBox(el){
+  el.style.width = "360px";
+  el.style.height = "120px";
+  el.style.resize = "none";
+  el.style.padding = "14px 16px";
+  el.style.fontSize = "16px";
+  el.style.fontFamily = "inherit";
+  el.style.borderRadius = "16px";
+  el.style.background = "#2a2b2d";
+  el.style.border = "2px solid #2a2b2d";
+  el.style.color = "var(--fg)";
+  el.style.outline = "none";
+  el.style.transition = ".15s";
+  el.onfocus = () => el.style.borderColor = "var(--accent)";
+  el.onblur = () => el.style.borderColor = "#2a2b2d";
+}
+
+/* =========================
+   TRANSLATION LOGIC
+   ========================= */
+
+let typingSource = null; // "morse" | "text"
+
+morseBox.addEventListener("input", () => {
+  typingSource = "morse";
+  textBox.value = "";
+
+  const words = morseBox.value.trim().split(" ");
+  const result = words.map(m => REVERSE[m] || "").join("");
+  textBox.value = result;
+});
+
+textBox.addEventListener("input", () => {
+  typingSource = "text";
+  morseBox.value = "";
+
+  const clean = textBox.value.toUpperCase().replace(/[^A-Z0-9 ]/g,"");
+  morseBox.value = clean
+    .split("")
+    .map(c => c === " " ? " / " : MORSE[c] || "")
+    .join(" ")
+    .replace(/\s+/g," ")
+    .trim();
+});
+<script>
+/* =========================
+   AI VISUAL AGENT LOGIC
+   ========================= */
+
+const aiVisualWrap = document.getElementById("aiVisualWrap");
+const aiImgs = aiVisualWrap.querySelectorAll("img");
+
+const AI_COLOR_MAP = {
+  red:"#ff4d4d",
+  blue:"#4facfe",
+  green:"#47cf73",
+  yellow:"#f9d423",
+  purple:"#a18cd1",
+  pink:"#f857a6",
+  orange:"#ff9f43",
+  black:"#1e1e1e",
+  white:"#f5f5f5",
+  gray:"#7f8c8d",
+  brown:"#8e6e53"
+};
+
+let aiCurrentBg = null;
+
+function aiResetBackground(){
+  if(aiCurrentBg){
+    document.body.style.background = "var(--bg)";
+    aiCurrentBg = null;
+  }
+}
+
+function aiHandleTextInput(raw){
+  if(GAME.mode !== "translator") return;
+
+  const q = raw.trim().toLowerCase();
+  if(q.length < 2){
+    aiVisualWrap.style.display = "none";
+    return;
+  }
+
+  /* COLOR LOGIC */
+  if(AI_COLOR_MAP[q]){
+    document.body.style.background = AI_COLOR_MAP[q];
+    aiCurrentBg = q;
+    aiVisualWrap.style.display = "none";
+    return;
+  }
+
+  /* IMAGE LOGIC */
+  aiVisualWrap.style.display = "flex";
+
+  aiImgs[0].src =
+    "https://source.unsplash.com/600x400/?" +
+    encodeURIComponent(q);
+
+  aiImgs[1].src =
+    "https://source.unsplash.com/601x401/?" +
+    encodeURIComponent(q);
+}
+
+/* =========================
+   SAFE HOOK (KHÔNG ĐỤNG CODE CŨ)
+   ========================= */
+
+textBox.addEventListener("input", () => {
+  aiHandleTextInput(textBox.value);
+});
+
+/* RESET KHI THOÁT TRANSLATOR */
+const __startGameAIAgent = startGame;
+startGame = function(){
+  __startGameAIAgent();
+
+  if(GAME.mode !== "translator"){
+    aiVisualWrap.style.display = "none";
+    aiResetBackground();
+  }else{
+    translatorWrap.after(aiVisualWrap);
+  }
+};
+</script>
+
+
+
+
+
+/* =========================
+   MODE HOOK
+   ========================= */
+
+const __startGameTranslator = startGame;
+startGame = function(){
+  __startGameTranslator();
+
+  if (GAME.mode === "translator") {
+    // hide normal game UI
+    morse.textContent = "";
+    text.textContent = "";
+    result.style.display = "none";
+    decodeInput.style.display = "none";
+    restartBtn.style.display = "none";
+
+    translatorWrap.style.display = "flex";
+    morseBox.focus();
+  } else {
+    translatorWrap.style.display = "none";
+    morseBox.value = "";
+    textBox.value = "";
+  }
+};
+</script>
+
+<script>
+/* =========================
+   GAME FOCUS OVERLAY LOGIC
+   ========================= */
+
+const overlay = document.getElementById("gameOverlay");
+const gameEl = document.getElementById("game");
+
+// chỉ trigger overlay khi click sát viền màn hình
+const EDGE = 20; // px
+
+// bật overlay ngay khi load
+overlay.classList.remove("hidden");
+
+// click overlay → resume
+overlay.onclick = () => {
+  overlay.classList.add("hidden");
+  decodeInput?.focus();
+};
+
+// ESC để bật overlay (optional nhưng xịn)
+document.addEventListener("keydown", e=>{
+  if (e.key === "Escape") {
+    overlay.classList.remove("hidden");
+  }
+});
+
+/* =========================
+   TAB / WINDOW BLUR HANDLING
+   ========================= */
+
+// khi chuyển tab (Chrome, Firefox, Safari)
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) {
+    overlay.classList.remove("hidden");
+  }
+});
+
+// khi alt+tab / click ra app khác
+window.addEventListener("blur", () => {
+  overlay.classList.remove("hidden");
+});
+
+</script>
+
+<script>
+/* =========================
+   FIREWORKS ENGINE
+   ========================= */
+
+const fwCanvas = document.getElementById("fireworks");
+const fwCtx = fwCanvas.getContext("2d");
+
+let fwParticles = [];
+let fwRunning = false;
+
+function resizeFW(){
+  fwCanvas.width = window.innerWidth;
+  fwCanvas.height = window.innerHeight;
+}
+window.addEventListener("resize", resizeFW);
+resizeFW();
+
+function randomColor(){
+  const colors = [
+    "#ff5f6d", "#ffc371", "#47cf73",
+    "#38f9d7", "#4facfe", "#a18cd1"
+  ];
+  return colors[Math.floor(Math.random()*colors.length)];
+}
+
+function spawnFirework(x, y){
+  for(let i=0;i<80;i++){
+    fwParticles.push({
+      x, y,
+      vx: (Math.random()-0.5)*10,
+      vy: (Math.random()-0.5)*10,
+      life: 60,
+      color: randomColor()
+    });
+  }
+}
+
+function updateFW(){
+  fwCtx.clearRect(0,0,fwCanvas.width,fwCanvas.height);
+
+  fwParticles = fwParticles.filter(p=>p.life>0);
+
+  fwParticles.forEach(p=>{
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += 0.15;
+    p.life--;
+
+    fwCtx.globalAlpha = p.life/60;
+    fwCtx.fillStyle = p.color;
+    fwCtx.beginPath();
+    fwCtx.arc(p.x, p.y, 2.2, 0, Math.PI*2);
+    fwCtx.fill();
+  });
+
+  fwCtx.globalAlpha = 1;
+
+  if (fwParticles.length > 0) {
+    requestAnimationFrame(updateFW);
+  } else {
+    fwRunning = false;
+  }
+}
+
+function launchFireworks(){
+  if (fwRunning) return;
+  fwRunning = true;
+
+  const cx = window.innerWidth/2;
+  const cy = window.innerHeight/2 - 80;
+
+  let bursts = 0;
+  const interval = setInterval(()=>{
+    spawnFirework(
+      cx + (Math.random()-0.5)*200,
+      cy + (Math.random()-0.5)*120
+    );
+    bursts++;
+
+    if(bursts>=6){
+      clearInterval(interval);
+    }
+
+    if(!fwRunning){
+      updateFW();
+    }
+  }, 220);
+
+  updateFW();
+}
+</script>
+
+</body>
+</html>
+
+
