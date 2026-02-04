@@ -759,6 +759,8 @@ let SETTINGS = {
 };
 
 function startGame(){
+ GAME.startTime = 0;
+
  morse.textContent="";
  text.textContent="";
  result.style.display="none";
@@ -772,8 +774,7 @@ function startGame(){
    morse.textContent=toMorse(GAME.text);
    decodeInput.value="";
    decodeInput.style.display="inline-block";
-   decodeInput.focus(); // 👈 THÊM DÒNG NÀY
-   GAME.startTime=Date.now();
+   decodeInput.focus();
  }
 
 
@@ -829,7 +830,12 @@ function toMorse(str){
 }
 
 decodeInput.oninput=()=>{
- if(GAME.mode==="encode"){
+  // START TIME — decode
+  if (GAME.mode === "decode" && GAME.startTime === 0) {
+    GAME.startTime = Date.now();
+  }
+
+  if(GAME.mode==="encode"){
    const v=decodeInput.value
     .toUpperCase()
     .replace(SETTINGS.numbers ? /[^A-Z0-9]/g : /[^A-Z]/g, "");
@@ -850,11 +856,26 @@ decodeSubmit.onclick=()=>{
 restartBtn.onclick=startGame;
 
 function showResult(acc){
- result.style.display="flex";
- result.innerHTML=`
- <div><div class="result-big">${GAME.text.length}</div>chars</div>
- <div><div class="result-big">${acc}</div>accuracy</div>
- `;
+  const elapsedMs = Date.now() - GAME.startTime;
+  const seconds = (elapsedMs / 1000).toFixed(2);
+
+  result.style.display="flex";
+  result.innerHTML=`
+    <div>
+      <div class="result-big">${GAME.text.length}</div>
+      chars
+    </div>
+
+    <div>
+      <div class="result-big">${acc}</div>
+      accuracy
+    </div>
+
+    <div>
+      <div class="result-big">${seconds}s</div>
+      time
+    </div>
+  `;
 }
 
 document.querySelectorAll(".mode").forEach(b=>{
@@ -909,6 +930,9 @@ document.addEventListener("keydown", e=>{
  if (GAME.mode !== "encode") return;
 
  if (e.key !== "." && e.key !== "-") return;
+ if (GAME.startTime === 0) {
+   GAME.startTime = Date.now();
+ }
 
  e.preventDefault();
 
@@ -1579,3 +1603,9 @@ window.addEventListener("blur", () => {
 
 </body>
 </html>
+
+
+
+
+
+
