@@ -491,14 +491,6 @@ const REVERSE = Object.fromEntries(
   Object.entries(MORSE).map(([k,v])=>[v,k])
 );
 
-const dotSound = new Audio(
-  "dot.mp3"
-);
-
-const dashSound = new Audio(
-  "dash.mp3"
-);
-
 dotSound.preload = "auto";
 dashSound.preload = "auto";
 
@@ -640,15 +632,11 @@ startGame();
 
 document.addEventListener("keydown", e => {
   if (e.key === ".") {
-    const s = dotSound.cloneNode();
-    s.volume = dotSound.volume;
-    s.play();
+    playDot();
   }
 
   if (e.key === "-") {
-    const s = dashSound.cloneNode();
-    s.volume = dashSound.volume;
-    s.play();
+    playDash();
   }
 });
 
@@ -825,6 +813,53 @@ document.querySelectorAll(".time").forEach(t=>{
     startGame();
   };
 });
+
+/* =========================
+   LOW LATENCY MORSE SOUND
+   ========================= */
+
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+const audioCtx = new AudioCtx();
+
+let dotBuffer = null;
+let dashBuffer = null;
+
+async function loadSound(url) {
+  const res = await fetch(url);
+  const arr = await res.arrayBuffer();
+  return await audioCtx.decodeAudioData(arr);
+}
+
+async function initSounds() {
+  dotBuffer = await loadSound("dot.mp3");
+  dashBuffer = await loadSound("dash.mp3");
+}
+
+// gọi sớm
+initSounds();
+
+// unlock audio (Chrome policy)
+document.addEventListener("keydown", () => {
+  if (audioCtx.state === "suspended") {
+    audioCtx.resume();
+  }
+}, { once: true });
+
+function playDot() {
+  if (!dotBuffer) return;
+  const src = audioCtx.createBufferSource();
+  src.buffer = dotBuffer;
+  src.connect(audioCtx.destination);
+  src.start();
+}
+
+function playDash() {
+  if (!dashBuffer) return;
+  const src = audioCtx.createBufferSource();
+  src.buffer = dashBuffer;
+  src.connect(audioCtx.destination);
+  src.start();
+}
 
 </script>
 
