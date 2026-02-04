@@ -173,8 +173,9 @@ body{
 
 .mode.active,
 .time.active{
-  color:var(--accent);
+  color:inherit;
 }
+.time.active.rainbow{}
 
 .mode.disabled{
   opacity:.4;
@@ -246,6 +247,28 @@ body{
   display:block;
 }
 
+.rainbow{
+  background: linear-gradient(
+    90deg,
+    #ff5f6d,
+    #ffc371,
+    #47cf73,
+    #38f9d7,
+    #4facfe,
+    #a18cd1,
+    #f857a6
+  );
+  background-size: 300% 300%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: rainbowMove 4s ease infinite;
+}
+
+@keyframes rainbowMove{
+  0%{background-position:0% 50%}
+  50%{background-position:100% 50%}
+  100%{background-position:0% 50%}
+}
 
 </style>
 </head>
@@ -254,7 +277,7 @@ body{
 <div id="app">
 
 <div id="header">
-  <div id="logo"><span>mt</span> morseType</div>
+  <div id="logo"><span class="rainbow">mt</span> morseType</div>
 
   <div id="header-actions">
     <span class="hicon" title="Achievements">★</span>
@@ -280,26 +303,24 @@ body{
 
     <!-- CENTER -->
     <div class="bar-section">
-      <span class="mode active" data-mode="decode">decode</span>
-      <span class="mode" data-mode="encode">encode</span>
-      <span class="mode" data-mode="practice">practice</span>
-      <span class="mode disabled">translator</span>
+          <span class="mode active" data-mode="decode">decode</span>
+          <span class="mode" data-mode="encode">encode</span>
+          <span class="mode" data-mode="practice">practice</span>
+          <span class="mode" data-mode="translator">translator</span>
     </div>
 
     <div class="bar-divider"></div>
 
     <!-- RIGHT -->
     <div class="bar-section">
-      <span class="time active" data-time="15">15s</span>
-      <span class="time" data-time="30">30s</span>
-      <span class="time" data-time="60">60s</span>
+      <span class="time active" data-count="15">15c</span>
+      <span class="time" data-count="30">30c</span>
+      <span class="time" data-count="60">60c</span>
       <span class="bar-btn">custom</span>
     </div>
 
   </div>
 </div>
-
-
 
 <div id="game">
   <div id="morse"></div>
@@ -377,6 +398,8 @@ let GAME={
   currentMorse:""   // morse đang gõ
 };
 
+let CHAR_COUNT = 15;
+
 let SETTINGS = {
   realism: false,
   numbers: false
@@ -402,16 +425,6 @@ function startGame(){
    GAME.startTime=Date.now();
  }
 
-let GAME_TIME = 15;
-
-document.querySelectorAll(".time").forEach(t=>{
-  t.onclick=()=>{
-    document.querySelectorAll(".time").forEach(x=>x.classList.remove("active"));
-    t.classList.add("active");
-    GAME_TIME = +t.dataset.time;
-    startGame();
-  };
-});
 
  if(GAME.mode==="encode"){
    GAME.text = randomText();
@@ -432,29 +445,38 @@ document.querySelectorAll(".time").forEach(t=>{
 }
 
 function randomText(){
-  // realism → từ có nghĩa
+  // REALISTIC MODE
   if (SETTINGS.realism) {
-    let words = [];
-    while (words.join(" ").length < 20) {
-      words.push(REAL_WORDS[Math.floor(Math.random()*REAL_WORDS.length)]);
+    let parts = [];
+
+    while (parts.join(" ").length < CHAR_COUNT) {
+      let w = REAL_WORDS[Math.floor(Math.random() * REAL_WORDS.length)];
+      if (SETTINGS.numbers && Math.random() < 0.3) {
+        w += Math.floor(Math.random() * 10);
+      }
+      parts.push(w);
     }
-    return words.join(" ").slice(0, 20).replace(/ /g,"");
+
+    return parts.join(" ").slice(0, CHAR_COUNT);
   }
 
+  // NON-REALISTIC MODE
   let chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
   if (SETTINGS.numbers) chars += "0123456789";
 
   return Array.from(
-    {length:8},
-    ()=>chars[Math.floor(Math.random()*chars.length)]
+    { length: CHAR_COUNT },
+    () => chars[Math.floor(Math.random() * chars.length)]
   ).join("");
 }
+
+
 
 
 function renderEncodeText(){
   return GAME.text.split("").map((c,i)=>{
     if(i < GAME.index) return `<span style="color:#7ad07a">${c}</span>`;
-    if(i === GAME.index) return `<span style="color:#a970ff">${c}</span>`;
+    if(i === GAME.index) return `<span class="rainbow">${c}</span>`;
     return `<span style="opacity:.4">${c}</span>`;
   }).join("");
 }
@@ -512,12 +534,17 @@ function showResult(acc){
 }
 
 document.querySelectorAll(".mode").forEach(b=>{
- b.onclick=()=>{
-   document.querySelectorAll(".mode").forEach(x=>x.classList.remove("active"));
-   b.classList.add("active");
-   GAME.mode=b.dataset.mode;
-   startGame();
- };
+  b.onclick=()=>{
+    if (b.classList.contains("disabled")) return;
+
+    document.querySelectorAll(".mode").forEach(x=>{
+      x.classList.remove("active","rainbow");
+    });
+
+    b.classList.add("active","rainbow");
+    GAME.mode = b.dataset.mode;
+    startGame();
+  };
 });
 
 startGame();
@@ -546,48 +573,59 @@ document.addEventListener("keydown", e=>{
     return;
   }
 
-  // encode only
-  if (GAME.mode !== "encode") return;
+// encode only
+ if (GAME.mode !== "encode") return;
 
-  if (e.key !== "." && e.key !== "-") return;
+ if (e.key !== "." && e.key !== "-") return;
 
-  e.preventDefault();
+ e.preventDefault();
 
-  if (e.key === ".") {
-    dotSound.currentTime = 0;
-    dotSound.play();
-  }
-  if (e.key === "-") {
-    dashSound.currentTime = 0;
-    dashSound.play();
-  }
+// ✅ SKIP SPACE TỰ ĐỘNG
+ while (GAME.text[GAME.index] === " ") {
+  GAME.index++;
+   GAME.currentMorse = "";
+   morse.textContent = "";
+   text.innerHTML = renderEncodeText();
+ }
 
-  GAME.currentMorse += e.key;
-  morse.textContent = GAME.currentMorse;
+// nếu đã encode xong
+ if (GAME.index >= GAME.text.length) {
+   showResult("100%");
+   return;
+ }
 
-  const expected = MORSE[GAME.text[GAME.index]];
+ if (e.key === ".") {
+   dotSound.currentTime = 0;
+   dotSound.play();
+ }
+ if (e.key === "-") {
+   dashSound.currentTime = 0;
+   dashSound.play();
+ }
 
-  if (!expected.startsWith(GAME.currentMorse)) {
-    GAME.currentMorse = "";
-    morse.textContent = "";
-    return;
-  }
+ GAME.currentMorse += e.key;
+ morse.textContent = GAME.currentMorse;
 
-  if (GAME.currentMorse === expected) {
-    GAME.index++;
-    GAME.currentMorse = "";
-    morse.textContent = "";
+ const expected = MORSE[GAME.text[GAME.index]];
 
-    if (GAME.index >= GAME.text.length) {
-      showResult("100%");
-    } else {
-      text.innerHTML = renderEncodeText();
-    }
-  }
+ if (!expected || !expected.startsWith(GAME.currentMorse)) {
+   GAME.currentMorse = "";
+   morse.textContent = "";
+   return;
+ }
+
+ if (GAME.currentMorse === expected) {
+   GAME.index++;
+   GAME.currentMorse = "";
+   morse.textContent = "";
+
+   if (GAME.index >= GAME.text.length) {
+     showResult("100%");
+   } else {
+     text.innerHTML = renderEncodeText();
+   }
+ }
 });
-
-
-
 
 document.getElementById("btn-settings").onclick = () => {
   alert("Settings – theme, sound, difficulty (todo)");
@@ -644,8 +682,22 @@ document.addEventListener("mouseup", ()=>{
   isDragging = false;
 });
 
+document.querySelectorAll(".time").forEach(t=>{
+  t.onclick = () => {
+    document.querySelectorAll(".time").forEach(x=>{
+      x.classList.remove("active","rainbow");
+    });
+
+    t.classList.add("active","rainbow");
+    CHAR_COUNT = +t.dataset.count;
+
+    startGame();
+  };
+});
+
 </script>
 </body>
 </html>
+
 
 
