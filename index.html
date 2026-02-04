@@ -491,8 +491,16 @@ const REVERSE = Object.fromEntries(
   Object.entries(MORSE).map(([k,v])=>[v,k])
 );
 
-const dotSound = new Audio("https://upload.wikimedia.org/wikipedia/commons/4/4f/Morse_code_dot.ogg");
-const dashSound = new Audio("https://upload.wikimedia.org/wikipedia/commons/b/b5/Morse_code_dash.ogg");
+const dotSound = new Audio(
+  "dot.mp3"
+);
+
+const dashSound = new Audio(
+  "dash.mp3"
+);
+
+dotSound.preload = "auto";
+dashSound.preload = "auto";
 
 dotSound.volume = 0.5;
 dashSound.volume = 0.5;
@@ -630,6 +638,18 @@ document.querySelectorAll(".mode").forEach(b=>{
 
 startGame();
 
+document.addEventListener("keydown", e => {
+  if (e.key === ".") {
+    dotSound.currentTime = 0;
+    dotSound.play();
+  }
+
+  if (e.key === "-") {
+    dashSound.currentTime = 0;
+    dashSound.play();
+  }
+});
+
 document.addEventListener("keydown", e=>{
   
   // Enter để submit decode
@@ -673,15 +693,6 @@ document.addEventListener("keydown", e=>{
  if (GAME.index >= GAME.text.length) {
    showResult("100%");
    return;
- }
-
- if (e.key === ".") {
-   dotSound.currentTime = 0;
-   dotSound.play();
- }
- if (e.key === "-") {
-   dashSound.currentTime = 0;
-   dashSound.play();
  }
 
  GAME.currentMorse += e.key;
@@ -974,9 +985,3 @@ function renderPracticeMorse(){
 
 </body>
 </html>
- 
-
-
-
-
-
