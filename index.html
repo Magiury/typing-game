@@ -820,14 +820,38 @@ infoClose.onclick = () => {
   infoPanel.style.display = "none";
 };
 
+/* =========================
+   INFO PANEL DRAG
+   ========================= */
+
 const infoHeader = document.getElementById("infoHeader");
 
-let isDragging = false;
-let offsetX = 0;
-let offsetY = 0;
+let isDraggingInfo = false;
+let infoOffsetX = 0;
+let infoOffsetY = 0;
 
-// chỉ trigger overlay khi click sát viền màn hình
-const EDGE = 20; // px
+infoHeader.addEventListener("mousedown", e => {
+  isDraggingInfo = true;
+
+  const rect = infoPanel.getBoundingClientRect();
+  infoOffsetX = e.clientX - rect.left;
+  infoOffsetY = e.clientY - rect.top;
+
+  infoPanel.style.left = rect.left + "px";
+  infoPanel.style.top  = rect.top + "px";
+  infoPanel.style.right = "auto"; // 🔴 BẮT BUỘC
+});
+
+document.addEventListener("mousemove", e => {
+  if (!isDraggingInfo) return;
+
+  infoPanel.style.left = e.clientX - infoOffsetX + "px";
+  infoPanel.style.top  = e.clientY - infoOffsetY + "px";
+});
+
+document.addEventListener("mouseup", () => {
+  isDraggingInfo = false;
+});
 
 document.addEventListener("mousedown", e => {
   const x = e.clientX;
@@ -1070,11 +1094,124 @@ function renderPracticeMorse(){
 
 <script>
 /* =========================
+   TRANSLATOR MODE PACKAGE
+   ========================= */
+
+const translatorWrap = document.createElement("div");
+translatorWrap.style.display = "none";
+translatorWrap.style.justifyContent = "center";
+translatorWrap.style.alignItems = "center";
+translatorWrap.style.gap = "18px";
+translatorWrap.style.position = "relative";
+translatorWrap.style.top = "-100px";
+
+/* MORSE INPUT */
+const morseBox = document.createElement("textarea");
+morseBox.placeholder = "morse code";
+styleBox(morseBox);
+
+/* ARROW */
+const arrow = document.createElement("div");
+arrow.innerHTML = "⇄";
+arrow.style.fontSize = "26px";
+arrow.style.color = "var(--sub)";
+arrow.style.userSelect = "none";
+
+/* TEXT INPUT */
+const textBox = document.createElement("textarea");
+textBox.placeholder = "text";
+styleBox(textBox);
+
+/* APPEND */
+translatorWrap.appendChild(morseBox);
+translatorWrap.appendChild(arrow);
+translatorWrap.appendChild(textBox);
+document.getElementById("game").appendChild(translatorWrap);
+
+/* =========================
+   STYLE HELPER
+   ========================= */
+function styleBox(el){
+  el.style.width = "360px";
+  el.style.height = "120px";
+  el.style.resize = "none";
+  el.style.padding = "14px 16px";
+  el.style.fontSize = "16px";
+  el.style.fontFamily = "inherit";
+  el.style.borderRadius = "16px";
+  el.style.background = "#2a2b2d";
+  el.style.border = "2px solid #2a2b2d";
+  el.style.color = "var(--fg)";
+  el.style.outline = "none";
+  el.style.transition = ".15s";
+  el.onfocus = () => el.style.borderColor = "var(--accent)";
+  el.onblur = () => el.style.borderColor = "#2a2b2d";
+}
+
+/* =========================
+   TRANSLATION LOGIC
+   ========================= */
+
+let typingSource = null; // "morse" | "text"
+
+morseBox.addEventListener("input", () => {
+  typingSource = "morse";
+  textBox.value = "";
+
+  const words = morseBox.value.trim().split(" ");
+  const result = words.map(m => REVERSE[m] || "").join("");
+  textBox.value = result;
+});
+
+textBox.addEventListener("input", () => {
+  typingSource = "text";
+  morseBox.value = "";
+
+  const clean = textBox.value.toUpperCase().replace(/[^A-Z0-9 ]/g,"");
+  morseBox.value = clean
+    .split("")
+    .map(c => c === " " ? " / " : MORSE[c] || "")
+    .join(" ")
+    .replace(/\s+/g," ")
+    .trim();
+});
+
+/* =========================
+   MODE HOOK
+   ========================= */
+
+const __startGameTranslator = startGame;
+startGame = function(){
+  __startGameTranslator();
+
+  if (GAME.mode === "translator") {
+    // hide normal game UI
+    morse.textContent = "";
+    text.textContent = "";
+    result.style.display = "none";
+    decodeInput.style.display = "none";
+    restartBtn.style.display = "none";
+
+    translatorWrap.style.display = "flex";
+    morseBox.focus();
+  } else {
+    translatorWrap.style.display = "none";
+    morseBox.value = "";
+    textBox.value = "";
+  }
+};
+</script>
+
+<script>
+/* =========================
    GAME FOCUS OVERLAY LOGIC
    ========================= */
 
 const overlay = document.getElementById("gameOverlay");
 const gameEl = document.getElementById("game");
+
+// chỉ trigger overlay khi click sát viền màn hình
+const EDGE = 20; // px
 
 // bật overlay ngay khi load
 overlay.classList.remove("hidden");
